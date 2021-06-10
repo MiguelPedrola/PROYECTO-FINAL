@@ -1,0 +1,196 @@
+---
+title: "PROYECTO WORKSHOP"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+PROYECTO 2
+
+
+CARGAMOS LIBRERIAS
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(highcharter)
+library(dplyr)
+library(lubridate)
+```
+
+CARGAMOS BASE DE DATOS
+```{r}
+Cantidad_Vacuna <- read.csv("/Users/jaquelinagiagnorio/Desktop/R/CURSO EANT/Proyectos/PROYECTO WORKSHOP 2/DATA VACUNACION/country_vaccinations.csv")
+
+Vacuna <- read.csv("/Users/jaquelinagiagnorio/Desktop/R/CURSO EANT/Proyectos/PROYECTO WORKSHOP 2/DATA VACUNACION/country_vaccinations_by_manufacturer.csv")
+
+
+```
+
+FILTRAMOS LA BASE DE DATOS DE ACUERDO A LOS PAISES QUE BUSCAMOS ESTUDIAR (PROBLEMA CON VENEZUELA)
+```{r}
+Cantidad_Vacuna_filtrada <- Cantidad_Vacuna %>% filter(country == "Argentina"| country == "Brazil"| country == "Bolivia"| country == "Uruguay"| country == "Venezuela"| country == "Chile"| country == "Paraguay"| country == "Colombia"| country == "Ecuador"| country == "Peru")
+```
+
+
+AGRUPAMOS LAS BASES DE DATOS Y BORRAMOS LOS NA. ADEMAS PONEMOS DATE COMO FORMATO FECHA
+```{r}
+Cantidad_Vacuna_Agrupado <- Cantidad_Vacuna_filtrada [!is.na(Cantidad_Vacuna_filtrada$daily_vaccinations_raw),]
+
+str(Cantidad_Vacuna_filtrada)
+Cantidad_Vacuna_filtrada$date <- as.Date(Cantidad_Vacuna_filtrada$date)
+```
+
+
+CREAMOS COLUMNAS CON LOS MES Y AÑOS Y AGRUPAMOS POR PAIS. PRIMERO TESTEAMOS CON UNA BASE DE DATOS DE ARGENTINA PARA PROBAR QUE FUNCIONE TODO Y LUEGO LO APLICAMOS A LA BASE DE DATOS MAS GRANDE.
+```{r}
+Cantidad_Vacuna_filtrada$mes <- month(Cantidad_Vacuna_filtrada$date)
+
+Cantidad_Vacuna_filtrada$año <- year(Cantidad_Vacuna_filtrada$date)
+
+Argentina_raw <- Cantidad_Vacuna_Agrupado %>% group_by(country) %>% summarise(sum(daily_vaccinations_raw))
+
+Argentina <- Cantidad_Vacuna_Agrupado %>% filter(country == "Argentina") 
+
+Argentina_mes <- Argentina %>% group_by(mes) %>% summarise(vacunas_totales =sum(daily_vaccinations_raw))
+
+Cantidad_Vacuna_Agrupado$mes <- month(Cantidad_Vacuna_Agrupado$date)
+
+Cantidad_Vacuna_Agrupado$año <- year(Cantidad_Vacuna_Agrupado$date)
+
+
+Cantidad_Vacuna_Agrupado2 <- Cantidad_Vacuna_Agrupado %>% group_by(mes,country) %>% summarise(Vacunas_totales = sum(daily_vaccinations_raw))%>%arrange(country, mes)
+
+Cantidad_Vacuna_Agrupado2 <- Cantidad_Vacuna_Agrupado2 %>% filter(!mes == "12")
+```
+
+GENERAMOS DOS GRAFICOS DE LINEA PARA OBSERVAR LA APLICACION DE VACUNAS TOTALES A LO LARGO DE LOS MESES PARA CADA PAIS. DESPUES PROBAMOS PONIENDO UN FACET_WRAP PARA TENER UNA GRAFICO POR SEPARADO DE ACUERDO A CADA PAIS
+```{r}
+options(scipen = 99)
+
+grafico1 <- ggplot()+
+  geom_line(data=Cantidad_Vacuna_Agrupado2, mapping = aes(x= mes, y = Vacunas_totales ), stat = "identity") +
+  facet_wrap(~country)
+
+grafico2 <- ggplot()+
+  geom_line(data=Cantidad_Vacuna_Agrupado2, mapping = aes(x= mes, y = Vacunas_totales, colour = country ), stat = "identity")
+
+
+ggplotly(grafico1)
+
+ggplotly(grafico2)
+```
+
+DESPUES OBSERVAMOS EL TOTAL DE VACUNAS APLICADAS EN UN MAPA INTERACTIVO DE LATAM (PERDIMOS EL REGISTRO DE VENEZUELA)
+```{r}
+vacunas_mes_SUDAM2<- Cantidad_Vacuna_Agrupado2 %>% group_by(country) %>% summarise(vacunas_totales = sum(Vacunas_totales))
+
+
+
+hcmap(
+  "custom/south-america", 
+  data =vacunas_mes_SUDAM2 ,
+  value = "vacunas_totales",
+  borderWidth = 0,
+  nullColor = "#d3d3d3",
+  joinBy = c("name","country")) %>%
+  hc_colorAxis(
+    stops = color_stops(colors = viridisLite::inferno(100, begin = 0.1)),
+    type = "logarithmic"
+    )
+```
+
+Aquí lo primero que hago es sacar para cada pais, el porcentaje de la poblacion vacunada en funcion de la cantidad de vacunados y la poblacion por pais. Luego con la funcion data.frame, creo un dataset que contenga la columna country con los paises referidos, y luego una columna con el porcentaje de poblacion vacunada por pais. Luego creo otro data set que tenga la columna country con los paises ya filtrados, pero que en vez de la poblacion vacunada por pais, contenga la poblacion por pais. Luego con la funcion left_join uno el dataset que contiene el porcentaje de vacunados por pais, con el dataset mapa_sudam, el cual contiene la cantidad de vacunados totales. Luego con este nuevo dataset, aplico otro left_join para unirlo con el dataset que contiene la poblacion por pais. Así por ultimo, me quedaria un dataset que contiene los paises, sus correspondientes poblaciones, la cantidad de personas vacunadas, y por ultimo el porcentaje de personas vacunadas en funcion de la poblacion de cada pais
+```{r}
+
+#Porcentajes de vacunados de cada pais por poblacion (formula=vacunas*100/poblacion):
+  Argentina: 11783339*100/44.939000
+Bolivia:1417110*100/11.543980
+Brazil:55512385*100/210.147000
+Chile:18465800*100/19.107000
+Colombia:6538823*100/50.374000
+Ecuador:1372685*100/17.268000
+Paraguay:339795*100/7.153000
+Peru:3841552*100/32.510453
+Uruguay:2817993*100/3.461734
+
+
+
+
+
+porcentaje_poblacion_vacunada<-data.frame("country" = c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Paraguay", "Peru", "Uruguay"),
+                                          "Porcen_Pob_Vac" = c(26.2, 12.2, 25.9, 96.6, 12.9, 7.9, 4.6, 11.8, 81.4))
+
+
+
+
+poblacion_pais<-data.frame("country" = c("Argentina", "Bolivia", "Brazil", "Chile", "Colombia", "Ecuador", "Paraguay", "Peru", "Uruguay"),
+                                          "Poblacion" = c(44.939000, 11.543980, 210.147000, 19.107000, 50.374000, 17.268000, 7.153000, 32.510453, 3.461734))
+
+
+
+
+porcentaje_poblacion_vacunada<-left_join(porcentaje_poblacion_vacunada, mapa_sudam, by="country")
+
+porcentaje_poblacion_vacunada<-left_join(porcentaje_poblacion_vacunada,poblacion_pais, by="country")
+
+
+
+
+
+hcmap(
+  "custom/south-america", 
+  data =porcentaje_poblacion_vacunada ,
+  value = "Porcen_Pob_Vac",
+  borderWidth = 0,
+  nullColor = "#d3d3d3",
+  joinBy = c("name","country")) %>%
+  hc_colorAxis(
+    stops = color_stops(colors = viridisLite::inferno(100, begin = 0.1)),
+    type = "logarithmic"
+  )
+
+
+```
+
+AHORA PRUEBO HACER UN GRAFICO DE LINEA DE ACUERDO AL PORCENTAJE DE VACUNADOS A LO LARGO DE LOS MESES PARA TODA SUDAMERICA.
+
+```{r}
+grafico3 <- ggplot()+
+  geom_line(data=Cantidad_Vacuna_Agrupado3, mapping = aes(x= mes, y = porcenjate_vacunados, colour = country ), stat = "identity")
+
+ggplotly(grafico3)
+
+grafico4 <- ggplot()+
+  geom_line(data=Cantidad_Vacuna_Agrupado3, mapping = aes(x= mes, y = porcenjate_vacunados ), stat = "identity") +
+  facet_wrap(~country)
+
+ggplotly(grafico4)
+
+#mismo problema, los graficos se muestran bien de acuerdo al crecimiento de vacunacion pero los porcentajes estan mal.
+```
+
