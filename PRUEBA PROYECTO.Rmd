@@ -6,7 +6,14 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+### LIBRERIAS USADAS
 
+library(rtweet)
+library(tidyverse)
+library(jsonlite)
+library(dplyr)
+library(funModeling)
+library(highcharter)
 
 SUBIMOS LAS BASES DE DATOS
 
@@ -50,4 +57,43 @@ volvemos a filtrar la base de datos por fecha para que quede mas comoda
 
 ```{r}
 BASE_COMPLETA_FILTRADA2 <- filter(BASE_COMPLETA, Año == "2021", Mes == "05")
+
+#VAMOS GRAFICAR SEGUN EL DISPOSITIVO UTILIZADO
+
+#### Gracias a la libreria funModeling podemos ver la frecuencia rápidamente. 
+
+freq(BASE_COMPLETA_MAYO$screen_name)
+#(lindo gráfico)
+
+### Creamos una nueva variable que se llama frecuencia. Lo pusimos al final. 
+### Column es el tipo de grafico, "hcaes" serian los parametros, agrupado por "enviado_desde"
+BASE_COMPLETA_MAYO%>%group_by(screen_name, enviado_desde)%>%summarise(cantidad=n())-> frecuencia
+
+### Grafico muy chulo y dinámico con nuestra nueva variable llamada "frecuencia".  
+
+hchart(frecuencia, "column", hcaes(x=screen_name, y=cantidad, group=enviado_desde)) %>% hc_add_theme(hc_theme_darkunica())
+
+#otro grafico con la misma base de datos
+
+  hchart(frecuencia, "column", hcaes(x=screen_name, y=cantidad, group=enviado_desde)) %>% hc_add_theme(hc_theme_monokai())%>%hc_title(text="Tweets segun dispositivo de envio")%>%hc_subtitle(text=paste0("Año 2021-Mes mayo"))%>%hc_caption(text="Fuente: https://politicosentwitter.com/%22")
+
 ```
+
+
+```{r}
+### Cercioramos que esta en formato fecha
+
+BASE_COMPLETA_MAYO$fecha<-as.Date(BASE_COMPLETA_MAYO$fecha)
+
+# Creamos la variable "tweets" con nuestra base. Atenti a lo facilongo que es. 
+
+BASE_COMPLETA_MAYO%>%filter(is_retweet=="FALSE" & Año =="2021")%>%group_by(fecha, nombre)%>%summarise(cantidad_tweets=n()) %>% arrange(fecha)->tweets
+
+# Graficamos con un grafico de linea los TWEETS POR DIA SEGUN LOS POLITICOS.
+
+hchart(tweets, "line", hcaes(x = fecha, y = cantidad_tweets, group = nombre)) %>% hc_add_theme(hc_theme_flatdark())%>%hc_title(text="Tweets por dia segun usuario")%>%hc_caption(text="Fuente: https://politicosentwitter.com/%22")
+
+
+```
+
+
