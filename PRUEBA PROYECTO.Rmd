@@ -46,3 +46,8 @@ renombramos algunas variables de la base de datos
 ```{r}
 BASE_COMPLETA <- rename(BASE_COMPLETA, fecha = created_at, nombre = name, enviado_desde = source, tweet = text, likes = favorite_count)
 ```
+volvemos a filtrar la base de datos por fecha para que quede mas comoda
+
+```{r}
+BASE_COMPLETA_FILTRADA2 <- filter(BASE_COMPLETA, Año == 2021)
+```
