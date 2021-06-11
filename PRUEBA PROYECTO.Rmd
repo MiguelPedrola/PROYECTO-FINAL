@@ -50,3 +50,19 @@ BASE_COMPLETA$created_at <- as.Date(BASE_COMPLETA$created_at)
 
 str(BASE_COMPLETA)
 ```
+dividimos la columna de fecha en años, meses y dias.
+
+```{r}
+BASE_COMPLETA <- BASE_COMPLETA%>%mutate(Año=substr(created_at, 1, 4),
+                       Mes=substr(created_at, 6,7))
+```
+filtramos la base de datos 
+
+```{r}
+BASE_COMPLETA_FILTRADA <- filter(BASE_COMPLETA, Año >= 2020)
+```
+renombramos algunas variables de la base de datos
+
+```{r}
+BASE_COMPLETA <- rename(BASE_COMPLETA, fecha = created_at, nombre = name, enviado_desde = source, tweet = text, likes = favorite_count)
+```
