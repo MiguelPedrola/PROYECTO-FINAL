@@ -49,5 +49,5 @@ BASE_COMPLETA <- rename(BASE_COMPLETA, fecha = created_at, nombre = name, enviad
 volvemos a filtrar la base de datos por fecha para que quede mas comoda
 
 ```{r}
-BASE_COMPLETA_FILTRADA2 <- filter(BASE_COMPLETA, Año == 2021)
+BASE_COMPLETA_FILTRADA2 <- filter(BASE_COMPLETA, Año == "2021", Mes == "05")
 ```
