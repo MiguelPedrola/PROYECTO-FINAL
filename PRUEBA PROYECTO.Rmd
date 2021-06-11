@@ -1,5 +1,6 @@
 ---
 title: "PROYECTO PRUEBA"
+author: "Lito, Octa, Rama y Ren" 
 output: html_document
 ---
 
@@ -15,7 +16,7 @@ library(dplyr)
 library(funModeling)
 library(highcharter)
 
-SUBIMOS LAS BASES DE DATOS
+*SUBIMOS LAS BASES DE DATOS*
 
 ```{r}
 Vidal<-read.csv("mariuvidal_timeline_database.csv", encoding = "UTF-8")
