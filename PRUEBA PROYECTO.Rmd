@@ -31,7 +31,9 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 SUBIMOS LAS BASES DE DATOS
 
 ```{r}
-
+Vidal<-read.csv("mariuvidal_timeline_database.csv", encoding = "UTF-8")
+Alberto<-read.csv("alferdez_timeline_database.csv", encoding = "UTF-8")
+read.csv("Solanopo_timeline_database.csv", encoding = "UTF-8")->Solano
 ```
 
 Unir base de datos
@@ -41,4 +43,10 @@ BASE_COMPLETA <-merge(x=ALBERTO, y=BASE_DE_DATOS_SOLANO, all = TRUE)
 BASE_COMPLETA <- merge(x= BASE_COMPLETA, y=MARU_VIDAL, all = TRUE)
 
 ```
+Cambiar formato a fecha
 
+```{r}
+BASE_COMPLETA$created_at <- as.Date(BASE_COMPLETA$created_at)
+
+str(BASE_COMPLETA)
+```
