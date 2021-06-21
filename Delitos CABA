@@ -1,0 +1,281 @@
+
+```{r}
+library(funModeling)
+library(tidyverse)
+library(ggplot2)
+library(plotly)
+library(leaflet)
+library(lubridate)
+library(gganimate)
+library(sf)
+library(xts)
+library(dygraphs)
+library(highcharter)
+```
+
+
+
+
+
+Establecemos directorio y descargamos los dataset requeridos
+```{r}
+#Fuente de los dataset
+#https://data.buenosaires.gob.ar/dataset/delitos
+#https://data.buenosaires.gob.ar/dataset/barrios
+#https://data.buenosaires.gob.ar/dataset/comisarias-policia-ciudad
+#https://data.buenosaires.gob.ar/dataset/seguridad-habitos
+#https://data.buenosaires.gob.ar/dataset/camaras-fijas-control-vehicular
+
+
+setwd("C:/Users/USUARIO/EANT/Practicando R/")
+Delitos_2020<-read_csv("C:/Users/USUARIO/EANT/Practicando R/delitos_2020.csv")
+Delitos_2019<-read_csv("C:/Users/USUARIO/EANT/Practicando R/delitos_2019.csv")
+Delitos_2018<-read_csv("C:/Users/USUARIO/EANT/Practicando R/delitos_2018.csv")
+Delitos_2017<-read_csv("C:/Users/USUARIO/EANT/Practicando R/delitos_2017.csv")
+Delitos_2016<-read_csv("C:/Users/USUARIO/EANT/Practicando R/delitos_2016.csv")
+Comisarias_Caba<-read_csv("C:/Users/USUARIO/EANT/Practicando R/comisarias-policia-de-la-ciudad.csv")
+comunas_caba <- st_read('https://bitsandbricks.github.io/data/CABA_comunas.geojson')
+rivadavia_avenida <- st_read('https://bitsandbricks.github.io/data/avenida_rivadavia.geojson')
+
+```
+
+Comenzamos por hacer un analisis exploratorio de los datos.
+En primer lugar comenzamos analizando la cantida de delitos en relacion a los meses
+```{r}
+#Como no poseemos la variable mes por separado, sino que se encuentra ensamblada junto con los años y los dias en la variable fecha, procedi a crear una variable nueva que solo contenga los meses. Esta operacion la realizare con una funcion de lubridate, la cual es dataset$variable nueva<-month(dataset$variable en que se encuentran los meses).
+
+Delitos_2016$mes<-month(Delitos_2016$fecha)
+
+#Una vez creada la nueva variable mes, voy a proceder a cada mes asignarle el nombre que le corresponde.
+
+Delitos_2016<-Delitos_2016%>%mutate(mes=case_when(mes==1~"Enero", mes==2~"Febrero", mes==3~"Marzo", mes==4~"Abril", mes==5~"Mayo", mes==6~"Junio", mes==7~"Julio", mes==8~"Agosto", mes==9~"Septiembre", mes==10~"Octubre", mes==11~"Noviembre", mes==12~"Diciembre"))
+
+#Ahora procedemos a hacer el analisis exploratorio con respecto a la cantidad de delitos ocurridos por mes
+
+freq(Delitos_2016$mes)
+ggplot(data = Delitos_2016)+
+  geom_bar(mapping = aes(x=mes, fill=mes))+
+  theme(legend.position = "none")+
+  coord_flip()
+```
+
+
+Aquí vamos a analizar la cantidad de delitos por franja horaria
+```{r}
+freq(Delitos_2016$franja_horaria)
+
+#Como con la funcion freq vimos que hay valores perdidos en la variable franja, por lo tanto, al ver que son muy pocos los valores perdidos, voy a proceder a eliminar los valores perdidos del dataset delitos_2016. Al eliminar los valores perdidos que hay en la columna franja_horarios, se nos eliminan todas las filas en las cuales en la columna franja_horaria hay valores nulos o perdidos. La funcion para hacer esto es la siguiente datos <- datos[!is.na(datos$variable),]
+
+Delitos_2016 <- Delitos_2016[!is.na(Delitos_2016$franja_horaria),]
+freq(Delitos_2016$franja_horaria)
+```
+
+
+Aqui vamos a analizar la cantidad de delitos segun el tipo de delito
+```{r}
+freq(Delitos_2016$tipo_delito)
+ggplot(data = Delitos_2016)+
+  geom_bar(mapping = aes(x=tipo_delito, fill=tipo_delito))+
+  theme(legend.position = "none")+
+  coord_flip()
+  
+```
+
+
+Aquí vamos a ver la cantidad de delitos segun el subtipo
+```{r}
+freq(Delitos_2016$subtipo_delito)
+
+#Nuevamente nos encontramos con valores perdidos, pero como esta vez son demasiados, y de pisar mi dataset original me quedaria con muy pocos obersvaciones, voy a crear un nuevo dataset donde no hayan valores perdidos en la variable subtipo
+
+Delitos_2016_subtipos <- Delitos_2016[!is.na(Delitos_2016$subtipo_delito),]
+
+ggplot(data = Delitos_2016_subtipos)+
+  geom_bar(mapping = aes(x=subtipo_delito, fill=subtipo_delito))+
+  theme(legend.position = "none")+
+  coord_flip()
+```
+
+
+Aqui vamos a analizar la cantidad de delitos ocurridos por barrio
+```{r}
+freq(Delitos_2016$barrio)
+```
+
+
+Aqui vamos a analizar la cantidad de delitos por comuna
+```{r}
+freq(Delitos_2016$comuna)
+
+#Como vemos que aquí tambien hay valores nulos, voy a crear un nuevo dataset donde eliminare los valores nulos de la columna comuna
+Delitos_2016_comuna <- Delitos_2016[!is.na(Delitos_2016$comuna),]
+
+```
+
+
+Aquí vamos a proceder a analizar la variabilidad en el tiempo, durante el año 2016, de los delitos ocurridos.
+```{r}
+#Para realizar lo propuesto arriba del chunk, debo crear un nuevo dataset que cuente la cantidad de delitos (la frecuencia) que ocurrieron por fecha, independientemente de cualquier otra variable, sea el tipo de delito, el sub tipo u otro. Para ello, utilizare la funcion gruop_by y summarise, con la cuales lo que hare sera agrupar todas las observaciones por la fecha de ocurrencia, asígnandole al conteo de ocurrencia/frecuencia de las obersvaciones (delitos), el nombre delitos.
+
+Delitos_2016_por_fecha<-Delitos_2016%>%group_by(fecha)%>%summarise(delitos=n())
+
+#Una vez crado el dataset en donde agrupe toda la cantida de delitos segun su fecha de ocurrencia, procedo a graficarlos para ver su variabilidad durante el año 2016
+
+grafico_delitos2016_por_fecha<-ggplot(data = Delitos_2016_por_fecha, mapping = aes(x=fecha, y=delitos))+
+  geom_area(fill="navy", alpha=0.5)+
+  geom_line(colour="light blue")+
+  geom_point()+
+  theme_bw()
+
+ggplotly(grafico_delitos2016_por_fecha)
+```
+
+
+
+Aquí vamos a analizar la cantidad de delitos cometidos por franja horaria. Para ello tendremos que crear una variable que contenga, en funcion del momento del dia, las horas correspondientes
+```{r}
+#En un primer momento, realizo esta funcion de reenombrar cada uno de las observaciones debido a que, de no hacerlo, al momento de agrupar las observaciones bajo las categorias mañana-tarde-noche-madrugada, la funcion case_when no me toma las observaciones que se corresponden con el valor 0 en la variable franja_horaria. Por ello, tuve que renombrar a la observacion 0 hs por la variable 24 hs.
+Delitos_2016<-Delitos_2016%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+
+
+#Luego de hacer lo especificado arriba, aquí lo que hago es agrupar por intervalos para luego, a dicho intervalo, asígnarle una categoria correspondiente al momento del dia al que corresponden dichos intervalos
+Delitos_2016<-Delitos_2016%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"Mañana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+#Aqui grafico la cantidad de delitos ocurridos por el momento del dia
+ggplot(data = Delitos_2016)+
+  geom_bar(mapping = aes(x=momento_del_dia, fill=momento_del_dia))
+
+#Aquí grafico la cantidad de delitos ocurridos en el momento del dia, y el tipo de delitos ocurridos en cada momento del dia
+grafico_delitos_por_momento_del_dia_y_tipodelito<-ggplot(data = Delitos_2016)+
+  geom_bar(mapping = aes(x=momento_del_dia, fill=tipo_delito))
+ 
+grafico_delitos_por_momento_del_dia_y_tipodelito
+```
+
+
+Aqui lo que voy a hacer es construir un mapa del delito, graficando por cada tipo de delito un mapa, y en donde cada punto representa el lugar exacto en donde ocurrio dicho hecho. Cada punto esta contruido a partir de los datos de longitug y latitud.
+```{r}
+#Para relizar lo expuesto mas arriba, en un primer momento creare un nuevo dataset, a partir del ensamble del dataset donde se encuentran registrados los delitos junto con sus medidas de longitud y latitud, con el dataset de comunas, donde se encuentran las medidas geometricas para graficar el mapa de CABA. Por otro lado, con la funcion que realizare a continuacion, tambien eliminare vales perdidos.
+
+Delitos_2016 %>% 
+  na.exclude() %>% 
+  st_as_sf(coords = c("long","lat"), remove = FALSE,  crs = 4326) %>% 
+  st_join(comunas_caba)-> delitos_puntos_2016
+
+
+#Luego aqui pasare a graficar el mapa del delito en caba, en funcion de los distintos tipos de delito.
+
+
+ggplot(delitos_puntos_2016) +
+  geom_sf(data = comunas_caba, fill = "white") +
+  geom_sf(data = delitos_puntos_2016, aes(color=tipo_delito, alpha = 1), size=1) +
+  theme_gray()+
+  labs(title = paste("CABA - Mapa del delito"), 
+       subtitle = paste0("Delitos por tipo en la Ciudad de Buenos Aires - Año 2016\n") , 
+       caption = "Fuente: data.buenosaires.gob.ar", 
+       y = "", 
+       x = ""
+  ) +
+  theme (axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        legend.position = "none") +
+  facet_grid(cols = vars(tipo_delito))
+
+
+
+```
+
+
+
+Aqui voy a graficar un mapa que visualice los niveles de peligrosidad en CABA segun comuna, omitiendo los delitos relacionados a los siniestros automovilisticos.
+```{r}
+#Primero procedo a eliminar todos aquellos valores que, en la categoria subtipo_delito, no poseen ninguna observacion (NA)
+Delitos_2016_subtipos1<-Delitos_2016[!is.na(Delitos_2016$subtipo_delito),]
+
+
+#A partir del dataset creado, creo otro nuevo eliminando todas aquellas observaciones en donde el subtipo_delito corresponda a la categoria "Siniestro Vial", dejando solo aquellos relacionados al robo u homocidio
+Delitos_2016_no_siniestros<-filter(Delitos_2016_subtipos1, !(subtipo_delito=="Siniestro Vial"))
+
+
+#Luego agrupo todos los delitos cometidos en funcion de la comuna en donde sucedieron
+Delitos_2016_no_siniestros<-Delitos_2016_no_siniestros%>%group_by(comuna)%>%summarise(delitos=n())
+
+
+#Aqui en un primer momento modifico una columna del dataset comunas_caba, dataset que contiene las medidas geometricas de cada comuna, cambiando el nombre comunas por comuna (comuna=comunas) para de esta manera, a traves de un left_join poder ensamblar el dataset comunas con el dataset delitos_2016_no_siniestros mediante la categoria que tienen en comun, la cual es comuna. De dicho left_join saldra un nuevo dataset, el cual usare para graficar el mapa de nivel de peligrosidad por comuna en CABA
+comunas_caba%>%rename(comuna=comunas)->comunas
+comunas$comuna<-as.numeric(comunas$comuna)
+
+
+Delitos_2016_no_siniestros1<-left_join(comunas,Delitos_2016_no_siniestros, by="comuna")
+
+
+
+
+grafico_de_peligrosidad<-ggplot(data = Delitos_2016_no_siniestros1)+
+  geom_sf(mapping = aes(fill=delitos))+
+  geom_sf(data = rivadavia_avenida, color="red")+
+  scale_fill_viridis_b(option = "inferno", direction = -1)+
+  theme_void() + 
+  labs(title = paste("CABA - Mapa del delito"), 
+       subtitle = paste0("Nivel de peligrosidad por comuna - Año 2016") , 
+       caption = "Fuente: data.buenosaires.gob.ar", 
+       y = "", 
+       x = "")+
+  theme(axis.ticks = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+
+
+grafico_de_peligrosidad
+
+
+ggplotly(grafico_de_peligrosidad)
+
+
+
+```
+
+
+
+Aquí lo que voy a hacer es realizar un grafico de barras interactivo, visualizando la cantidad de delitos cometidos por el tipo de delito y, en funcion del momento del dia en que se realizaron. En este grafico tambien omito las delitos relacionados a los siniestros viales, teniendo en cuenta solo aquellos relacionados al homicidio y al robo
+```{r}
+
+#Aquí lo primero que hago es filtrar el dataset Delitos_2016, omitiendo todos aquellos delitos que en la variable subtipo_delito tengan valores nulos (NA)
+Delitos_2016[!is.na(Delitos_2016$subtipo_delito),]->subtipo
+
+
+#Luego aquí lo que hago es, a partir del nuevo dataset subtipo creado, eliminar todas aquellos datos que en la columna subtipo_delito, contengan datos que correspondan al valor "Siniestro Vial"
+subtipo1<-subtipo%>%filter(!(subtipo_delito=="Siniestro Vial"))
+
+
+#Luego aquí agrupo la canidad de delitos por tipo_delito y momento_del_dia
+subtipo_agrupado<-subtipo1%>%group_by(tipo_delito, momento_del_dia)%>%summarise(delitos=n())
+
+
+#Por ultimo realizo el grafico de barras con el paquete hchart
+grafico_delito_homicidio<-hchart(subtipo_agrupado, "column", hcaes(x = tipo_delito, y = delitos, group = momento_del_dia)) %>% hc_add_theme(hc_theme_darkunica())%>%hc_title(text="Delitos en CABA")%>%hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%hc_subtitle(text= paste0("Delitos por momentos del dia - Año 2016"))
+
+
+grafico_delito_homicidio
+```
+
+
+
+Aquí lo que voy a realizar es un grafico de barras, en donde visulizare la cantidad de siniestros viales en funcion del momento del dia en que se efectuaron
+```{r}
+#Aqui filtro todos las observaciones de la variable subtipo_delito, dejando solo aquellas que contengan el valor "Siniestro Vial"
+subtipo_siniestros<-subtipo%>%filter(subtipo_delito=="Siniestro Vial")
+
+#Luego agrupo todos los siniestros consumados en funcion del momento del dia en que ocurrieron
+siniestros_agrupados<-subtipo_siniestros%>%group_by(subtipo_delito, momento_del_dia)%>%summarise(delitos=n())
+
+#Por ultimo grafico dichos datos
+grafico_siniestros<-hchart(siniestros_agrupados, "bar", hcaes(x = subtipo_delito, y = delitos, group = momento_del_dia)) %>% hc_add_theme(hc_theme_darkunica())%>%hc_title(text="Siniestros viales CABA")%>%hc_subtitle(text=paste0("Siniestros segun momento del dia - Año 2016"))%>%hc_caption(text="Fuente: data.buenosaires.gob.ar")
+
+grafico_siniestros
+```
