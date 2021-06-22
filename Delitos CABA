@@ -279,3 +279,51 @@ grafico_siniestros<-hchart(siniestros_agrupados, "bar", hcaes(x = subtipo_delito
 
 grafico_siniestros
 ```
+
+
+Aqui lo que hare sera realizar un grafico de lineas que visulize, dentro del mismo, la cantidad de tipos de delitos ocurridos por fecha
+```{r}
+#Aqui lo que hice fue agrupar los delitos por la fecha y el tipo de delito
+Delitos_Agrupados<-Delitos_2016%>%
+  group_by(fecha, tipo_delito)%>%summarise(cantidad=n())
+
+#Aqui lo que hice fue hacer de las observaciones de la categoria tipo_delito, hacerlas categoria, es decir, pasarlas de filas a columnas. Esto lo hice para luego, poder separar las columnas en dataset separados
+Delitos_Agrupados_ordenados<-
+  spread(Delitos_Agrupados, tipo_delito, cantidad)%>%arrange(fecha)
+
+#Luego aqui fue crear un dataset en formato xts para cada tipo de delito
+homicidios_xts<-
+  xts(Delitos_Agrupados_ordenados$Homicidio, order.by = Delitos_Agrupados_ordenados$fecha)
+
+Hurto_SinViolencia_xts<-
+  xts(Delitos_Agrupados_ordenados$`Hurto (sin violencia)`, order.by = Delitos_Agrupados_ordenados$fecha)
+
+Lesiones_xts<-
+  xts(Delitos_Agrupados_ordenados$Lesiones, order.by = Delitos_Agrupados_ordenados$fecha)
+
+robo_violencia<-
+  xts(Delitos_Agrupados_ordenados$`Robo (con violencia)`, order.by = Delitos_Agrupados_ordenados$fecha)
+
+#Una vez hecho todo lo anterior, volvi a unir todos los dataset en uno solo en formato xts
+delitos_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+
+
+
+#Por ultimo lo que aqui hice fue, realizar un grafico de lineas en donde visulizo la cantidad de tipos de delitos ocurridos por fecha
+dygraph(delitos_xts, ylab = "Frecuencia", 
+        main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2016")%>%
+  dySeries( label = "Homicidios")%>%
+  dySeries( label = "Robos sin violencia")%>%
+  dySeries(label = "Lesiones")%>%
+  dySeries(label = "Robos con violencia")%>%
+  dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyLegend(width = 400)%>%
+  dyRangeSelector()
+
+
+```
+
+
+
+
