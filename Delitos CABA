@@ -323,6 +323,463 @@ dygraph(delitos_xts, ylab = "Frecuencia",
 
 
 ```
+#############Mapa con leaflet###############
+#Este grafico esta bien
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addMarkers(clusterOptions = markerClusterOptions())
+
+
+#Esta es la funcion que tuve que realizar para asignarle a cada tipo
+#de delito un color, y luego graficar en puntos el lugar exacto en 
+#donde ocurrieron. Cada color representa un tipo de delito especifico
+pal <- colorFactor(c("navy", "red", "yellow", "green"), domain = c("Robo (con violencia)", "Lesiones", "Hurto (sin violencia)", "Homicidio"))
+
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addProviderTiles(providers$CartoDB.DarkMatter)%>%
+  addCircleMarkers(~long, ~lat ,popup = Delitos_2016$tipo_delito, weight = 3,
+                   radius = 4, color = ~pal(tipo_delito), stroke = F,
+                   fillOpacity = 0.8)
+
+
+#Este grafico no esta bien, pero lo dejo porque esta aqui la funcion
+#addPolygons, la cual una vez que una al dataset los datos geometricos
+#podre graficar tambien con leaflet las medidas geometricas de CABA
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addProviderTiles(providers$CartoDB.DarkMatter)%>%
+  addMarkers(clusterOptions = markerClusterOptions())%>%
+  addPolygons(fill = FALSE, stroke = TRUE, color = "#03F")
+
+
+
+##################PROBANDO###############
+
+#Este color del mapa esta piola
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addProviderTiles(providers$Esri.WorldStreetMap)%>%
+  addMarkers(clusterOptions = markerClusterOptions())
+
+#Instalando paquetes
+install.packages("leaflet.extras")
+install.packages("rworldxtra")
+install.packages("raster")
+
+#Abriendo librerias
+library(leaflet.extras)
+library(rworldxtra)
+library(raster)
+library(sp)
+
+
+#Probando primer grafico: visualizacion de delitos por puntos, sin 
+#distinguir por tipo de delito
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addCircles(lat = ~lat, lng = ~long)
+
+#En este grafico lo unico que hacemos en remplazar los puntos por
+#popus, es decir, otro tipo de simbolo de representacion de los delitos
+#tambien podria usar addMarkers en vez de addAwesomeMarkers, que
+#es exactamente igual. Con addCircleMarkers tambien graficamos con
+#puntos, solo que los circulos son mas grandes y mas transparentes.
+#Esta ultima funcion no es recomendable cuando hay muchas observaciones
+#ya que se superponen demasiado por su tamaño
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addAwesomeMarkers(lat = ~lat, lng = ~long)
+
+
+
+
+####Comenzamos a asignarle un color a cada tipo de delitoo
+
+#Comenzamos por por crear un vector con el numero de los delitos
+Numero_delitos_2016 <-Delitos_2016$tipo_delito%>%unique()%>%length()
+
+
+#Luego creamos otro vector con el nombre de los tipos de delitos
+Nombres_delitos_2016 <-Delitos_2016$tipo_delito%>%unique()
+
+#Creamos un vector con los colores para los tipos de delito
+colores<- c('#1b9e77','#d95f02','#7570b3','#e7298a')
+
+#Ahora creamos la paleta de colores, asignando un color a cada tipo
+#de delito
+paleta <- colorFactor(colores, domain = Nombres_delitos_2016)
+
+#Aqui realizo el grafico en donde a cada tipo de delito se le
+#asigna un color en funcion de la paleta creada
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5)
+
+
+#EN este grafico, con la funcion label, lo que hacemos es que, al 
+#tocar cada punto podemos saber que tipo de delito ocurrio allí
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito)
+
+
+#Aqui con la funcion popup lo que podemos hacer es que, al apretar
+#cada punto, el cual al solo posar el cursor nos indica el tipo de
+#delito que allí ocurrio, tambien nos indique el momento del dia
+#en que dicho delito ocurrio
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito,
+             popup = ~momento_del_dia)
+
+##Luego aqui hacemos lo mismo pero le agregamos la funcion group
+#la cual nos va a servir de metodo de control para mas adelante.
+#Luego tambien guardamos el mapa en un objeto
+Mapa_2016_prueba <-Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addTiles()%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito,
+             popup = ~momento_del_dia,
+             group = "Delitos")
+
+#Una vez hecho objeto el mapa, con la funcion addlegend, lo que 
+#hice fue crear una leyenda, en donde me indidque que color 
+#corresponde a que tipo de delito
+Mapa_2016_prueba%>%leaflet::addLegend(data=Delitos_2016, "bottomright",
+                             pal=paleta,
+                             values= ~tipo_delito,
+                             title = "Tipo de Delitos",
+                             opacity=0.5,
+                             group="Leyenda")
+
+
+#Aqui hice otro mapa de prueba pero cambiando el color del mapa por uno
+#oscuro. Este color de mapa es mas util al momento de visualizar 
+#los puntos, ya que contrasta mejor con los colores, y por tanto
+#se vuelven mas identificables a primera vista
+Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addProviderTiles(providers$CartoDB.DarkMatter)%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito,
+             popup = ~momento_del_dia,
+             group = "Delitos")%>%
+  leaflet::addLegend(data=Delitos_2016, "bottomright",
+                     pal=paleta,
+                     values= ~tipo_delito,
+                     title = "Tipo de Delitos",
+                     opacity=0.5,
+                     group="Leyenda")
+
+###Es exactamente el mismo mapa que arriba pero convertido en objeto
+Mapa_2016_prueba_2<-Delitos_2016%>%
+  filter(fecha >="2016-01-01" & fecha <="2016-01-02")%>%
+  leaflet()%>%
+  addProviderTiles(providers$CartoDB.DarkMatter)%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito,
+             popup = ~momento_del_dia,
+             group = "Delitos")%>%
+  leaflet::addLegend(data=Delitos_2016, "bottomright",
+                     pal=paleta,
+                     values= ~tipo_delito,
+                     title = "Tipo de Delitos",
+                     opacity=0.5,
+                     group="Leyenda")
+
+
+Mapa_2016_prueba_2
+
+####Aqui lo que hice fue graficar todos los delitos ocurridos en
+#en el año 2016. No le cambie la leyenda, ni ninguna otra cosa, 
+#solamente filtre todas aquellas observaciones dejando solo las 
+#que corresponden  a los homicidios
+Delitos_2016%>%
+  filter(tipo_delito=="Homicidio")%>%
+  leaflet()%>%
+  addProviderTiles(providers$CartoDB.DarkMatter)%>%
+  addCircles(lat = ~lat, lng = ~long, 
+             color = ~paleta(tipo_delito),
+             fillOpacity = 0.5,
+             label = ~tipo_delito,
+             popup = ~momento_del_dia)%>%
+  leaflet::addLegend(data=Delitos_2016, "bottomright",
+                     pal=paleta,
+                     values= ~tipo_delito,
+                     title = "Tipo de Delitos",
+                     opacity=0.5,
+                     group="Delitos")
+
+
+###Aqui lo que hice fue, una vez creado en objeto el mapa-2, con la 
+#funcion addLayersControl, crear una opcion que me permita eliminar,
+# mediante un pequeñot tablero,los puntos que referencian los 
+#delitos o la leyenda en el mapa.
+Mapa_2016_prueba_2%>%
+  addLayersControl(overlayGroups = c("Delitos", "Leyenda"),
+                   options = layersControlOptions(collapsed = T))
+
+
+
+
+Nombres_delitos_2016
+
+###
+
+
+Nombres_pres <- list()
+for (i in 1:length(Nombres_delitos_2016)) {
+  Nombres_pres[[i]]<-Delitos_2016%>%dplyr::filter(tipo_delito == Nombres_delitos_2016[i], fecha >="2016-01-01" & fecha <="2016-01-02")
+  }
+names(Nombres_pres) <- Nombres_delitos_2016 
+
+
+
+###
+
+Mapa_2016_prueba_3<-leaflet()%>%addTiles()
+for (i in 1:length(Nombres_pres)) {
+  Mapa_2016_prueba_3 <- Mapa_2016_prueba_3 %>% 
+    addProviderTiles(providers$CartoDB.DarkMatter)%>%
+    addCircles(data = Nombres_pres[[i]],
+    lat = ~lat, lng = ~long, 
+    color = ~paleta(tipo_delito),
+    fillOpacity = 0.5,
+    label = ~tipo_delito,
+    popup = ~momento_del_dia,
+    group = Nombres_delitos_2016[i])
+}
+
+
+
+
+Mapa_2016_prueba_3<-Mapa_2016_prueba_3 %>%
+  leaflet::addLegend(data = Delitos_2016, "bottomright",
+                     pal = paleta, values = ~tipo_delito,
+                     title = "Delitos", opacity = 1,
+                     group = "Leyenda")
+
+
+
+
+
+
+Grupos <- c("Leyenda", Nombres_delitos_2016)
+Mapa_2016_prueba_3 <- Mapa_2016_prueba_3 %>% addLayersControl(overlayGroups = Grupos,
+                                                              options = layersControlOptions(collapsed = T))
+
+
+
+
+Mapa_2016_prueba_3
+
+
+####Probando grafico de lineas###
+#########Probando con datos de 2016-2017-2018######
+Delitos_2016%>%
+  mutate(anio_mes=substr(fecha, 1, 7))%>%
+  group_by(anio_mes, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_mes_2016
+
+
+Delitos_2017%>%
+  mutate(anio_mes=substr(fecha, 1, 7))%>%
+  group_by(anio_mes, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_mes_2017
+
+
+Delitos_2018%>%
+  mutate(anio_mes=substr(fecha, 1, 7))%>%
+  group_by(anio_mes, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_mes_2018
+
+
+merge(x=delitos_por_mes_2016,
+      y=delitos_por_mes_2017,
+      all=T)->delitos_por_mes_completa
+
+merge(x=delitos_por_mes_completa,
+      y=delitos_por_mes_2018,
+      all=T)->delitos_por_mes_completa
+
+
+format(delitos_por_mes_completa$anio_mes,
+       format="%Y:%m")->delitos_por_mes_completa$anio_mes
+
+
+hchart(delitos_por_mes_completa,
+       "line",
+       hcaes(x=anio_mes, y=cantidad, group=tipo_delito))%>%
+  hc_add_theme(hc_theme_darkunica())%>%
+  hc_title(text="Variabilidad de la estructura del delito")%>%
+  hc_subtitle(text="Año 2016-2018/CABA")%>%
+  hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+  hc_yAxis(title=list(text="Frecuencia de delitos",
+                      aling="high",
+                      margin=10))%>%
+  hc_xAxis(title=list(text="Linea temporal"))%>%
+  hc_navigator(enabled=T)
+
+
+
+####Probando grafico de poleas####
+install.packages("sankeywheel")
+library(sankeywheel)
+install.packages("manipulateWidget")
+library(manipulateWidget)
+
+Delitos_2016%>%
+  group_by(tipo_delito,
+           momento_del_dia)%>%
+  summarise(cantidad=n())->delitos_momentodeldia_2016
+
+view(delitos_momentodeldia_2016)
+
+
+sankeywheel(from = delitos_momentodeldia_2016$tipo_delito,
+            to = delitos_momentodeldia_2016$momento_del_dia,
+            weight = delitos_momentodeldia_2016$cantidad)
+
+
+
+sankeywheel(from = delitos_momentodeldia_2016$tipo_delito,
+            to = delitos_momentodeldia_2016$momento_del_dia,
+            weight = delitos_momentodeldia_2016$cantidad,
+            type = "sankey",
+            theme = "sunset",
+            title = "Delitos por momento del dia")
+
+
+######Analisis de delitos por dias#######
+weekdays(Delitos_2016$fecha)->
+  Delitos_2016$Dias
+
+Delitos_2016%>%
+  group_by(Dias,
+           tipo_delito)%>%
+  summarise(cantidad=n())%>%
+  arrange(Dias)->Dias_delitos
+
+
+
+
+ggplot(data = Dias_delitos)+
+  geom_col(mapping = aes(x = Dias,
+                         y =cantidad,
+                         fill=tipo_delito))+
+  coord_flip()+
+  geom_text(position = "stack",
+            aes(x=Dias,
+                y=cantidad,
+                label=cantidad))
+
+
+Dias_delitos%>%hchart("bar",
+                      hcaes(x=Dias,
+                            y=cantidad,
+                            group=tipo_delito),
+                      stacking="normal")
+
+
+Dias_delitos%>%hchart("bar",
+                      hcaes(x=Dias,
+                            y=cantidad,
+                            group=tipo_delito),
+                      stacking="percent")
+
+
+
+##########Subtipos de delitos por dia#########
+weekdays(Delitos_2016_subtipos1$fecha)->
+  Delitos_2016_subtipos1$dias
+
+Delitos_2016%>%
+  group_by(Dias,
+           subtipo_delito)%>%
+  summarise(cantidad=n())->Delitos_2016_subtipos1
+
+
+Delitos_2016_subtipos1[!is.na(Delitos_2016_subtipos1$subtipo_delito),]->Delitos_2016_subtipos1
+
+
+Delitos_2016_subtipos1%>%
+  hchart("bar",
+         hcaes(x=Dias,
+               y=cantidad,
+               group=subtipo_delito),
+         stacking="percent")
+
+
+
+Delitos_2016_subtipos1%>%
+  hchart("bar",
+         hcaes(x=Dias,
+               y=cantidad,
+               group=subtipo_delito),
+         stacking="normal")
+
+
+####Probando sacar tasa de delitos por cada 100.000 habitantes#########
+read_xlsx("Poblacion CABA/Poblacion 2016 proyeccion.xlsx")->Poblacion_2016
+
+Poblacion_2016%>%
+  rename(comuna=Comuna)->Poblacion_2016
+
+#Con esta funcion puedo contabilizar la cantida de observaciones para cada valor
+#incluyendo los valores perdidos
+data.frame(table(Delitos_2016$comuna, useNA = "always"))
+
+Poblacion_2016%>%
+  left_join(Delitos_2016, by="comuna")->Delitos_2016
+
+
+
+Delitos_2016%>%
+  group_by(comuna, Poblacion)%>%
+  summarise(cantidad=n())->Delitos_por_poblacion2016
+
+
+mutate(Delitos_por_poblacion2016, tasa=(cantidad/Poblacion)*100.000)
+
+
+
+
+
+
+
 
 
 
