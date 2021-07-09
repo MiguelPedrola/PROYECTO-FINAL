@@ -1,12 +1,3 @@
 # PROYECTO-FINAL
-PROYECTO FINAL DEL CURSO DE ANALISIS DE DATOS CON R DE EANT.
 
-
-GENTE SI ESTAN ESCRIBAN ACA
-
-Conoces a Marcelo?
-Si pa
-
-aca toy
-
-Que ondaaaaaaa
+Proyecto final del curso Social Data Analyst de la Escuela Argentina de Nuevas Tecnologias.
