@@ -318,8 +318,204 @@ dygraph(delitos_xts, ylab = "Frecuencia",
   dySeries(label = "Lesiones")%>%
   dySeries(label = "Robos con violencia")%>%
   dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
   dyLegend(width = 400)%>%
   dyRangeSelector()
+  
+  
+  
+  #######Delitos para 2017###########
+
+
+Delitos_2017%>%
+  group_by(fecha, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_dia_2017
+
+delitos_por_dia_2017<-
+  spread(delitos_por_dia_2017, tipo_delito, cantidad)%>%arrange(fecha)
+
+
+
+homicidios_2017_xts<-
+  xts(delitos_por_dia_2017$Homicidio,
+      order.by = delitos_por_dia_2017$fecha)
+
+xts(delitos_por_dia_2017$`Hurto (sin violencia)`,
+    order.by = delitos_por_dia_2017$fecha)->hurto_SinViolencia_2017_xts
+
+
+xts(delitos_por_dia_2017$Lesiones,
+    order.by = delitos_por_dia_2017$fecha)->lesiones_2017_xts
+
+xts(delitos_por_dia_2017$`Robo (con violencia)`,
+    order.by = delitos_por_dia_2017$fecha)->robo_violencia_2017_xts
+
+
+
+cbind(homicidios_2017_xts,
+      hurto_SinViolencia_2017_xts,
+      lesiones_2017_xts,
+      robo_violencia_2017_xts)->delitos_por_dia_2017
+
+
+
+
+
+dygraph(delitos_por_dia_2017, ylab = "Frecuencia delitos", 
+        main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2017")%>%
+  dySeries( label = "Homicidios")%>%
+  dySeries( label = "Robos sin violencia")%>%
+  dySeries(label = "Lesiones")%>%
+  dySeries(label = "Robos con violencia")%>%
+  dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+  dyLegend(width = 400)%>%
+  dyRangeSelector()
+  
+  
+  
+  #########delitos por dia 2018#########
+
+Delitos_2018%>%
+  group_by(fecha, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_dia_2018
+
+
+delitos_por_dia_2018<-
+  spread(delitos_por_dia_2018, tipo_delito, cantidad)%>%arrange(fecha)
+
+
+xts(delitos_por_dia_2018$Homicidio,
+    order.by = delitos_por_dia_2018$fecha)->homicidios_2018_xts
+
+xts(delitos_por_dia_2018$`Hurto (sin violencia)`,
+    order.by = delitos_por_dia_2018$fecha)->hurto_SinViolencia_2018_xts
+
+xts(delitos_por_dia_2018$Lesiones,
+    order.by = delitos_por_dia_2018$fecha)->lesiones_2018_xts
+
+xts(delitos_por_dia_2018$`Robo (con violencia)`,
+    order.by = delitos_por_dia_2018$fecha)->robo_violencia_2018_xts
+
+
+cbind(homicidios_2018_xts,
+      hurto_SinViolencia_2018_xts,
+      lesiones_2018_xts,
+      robo_violencia_2018_xts)->delitos_por_dia_2018
+
+
+
+dygraph(delitos_por_dia_2018, ylab = "Frecuencia delitos", 
+        main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2018")%>%
+  dySeries( label = "Homicidios")%>%
+  dySeries( label = "Robos sin violencia")%>%
+  dySeries(label = "Lesiones")%>%
+  dySeries(label = "Robos con violencia")%>%
+  dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+  dyLegend(width = 400)%>%
+  dyRangeSelector()
+  
+  
+  ########delitos por dia 2019##########
+
+Delitos_2019%>%
+  group_by(fecha, tipo_delito)%>%
+  summarise(cantidad=n())->delitos_por_dia_2019
+
+
+delitos_por_dia_2019<-
+  spread(delitos_por_dia_2019,
+         tipo_delito,
+         cantidad)%>%
+  arrange(fecha)
+
+dmy(delitos_por_dia_2019$fecha)->delitos_por_dia_2019$fecha
+
+delitos_por_dia_2019%>%arrange(fecha)->delitos_por_dia_2019
+
+xts(delitos_por_dia_2019$Homicidio,
+    order.by = delitos_por_dia_2019$fecha)->homicidios_2019_xts
+
+xts(delitos_por_dia_2019$`Hurto (sin violencia)`,
+    order.by = delitos_por_dia_2019$fecha)->hurto_SinViolencia_2019_xts
+
+xts(delitos_por_dia_2019$Lesiones,
+    order.by = delitos_por_dia_2019$fecha)->lesiones_2019_xts
+
+xts(delitos_por_dia_2019$`Robo (con violencia)`,
+    order.by = delitos_por_dia_2019$fecha)->robo_violencia_2019_xts
+
+
+cbind(homicidios_2019_xts,
+      hurto_SinViolencia_2019_xts,
+      lesiones_2019_xts,
+      robo_violencia_2019_xts)->delitos_por_dia_2019
+
+
+dygraph(delitos_por_dia_2019, ylab = "Frecuencia delitos", 
+        main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2019")%>%
+  dySeries( label = "Homicidios")%>%
+  dySeries( label = "Robos sin violencia")%>%
+  dySeries(label = "Lesiones")%>%
+  dySeries(label = "Robos con violencia")%>%
+  dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+  dyLegend(width = 400)%>%
+  dyRangeSelector()
+  
+  
+  
+  Delitos_2020%>%
+  group_by(fecha, tipo)%>%
+  summarise(cantidad=n())->delitos_por_dia_2020
+
+
+
+spread(delitos_por_dia_2020, tipo, cantidad)%>%
+  arrange(fecha)->delitos_por_dia_2020
+
+
+xts(delitos_por_dia_2020$Homicidio,
+    order.by = delitos_por_dia_2020$fecha)->homicidios_2020_xts
+
+
+xts(delitos_por_dia_2020$`Hurto (sin violencia)`,
+    order.by = delitos_por_dia_2020$fecha)->hurto_SinViolencia_2020_xts
+
+
+xts(delitos_por_dia_2020$Lesiones,
+    order.by = delitos_por_dia_2020$fecha)->lesiones_2020_xts
+
+
+xts(delitos_por_dia_2020$`Robo (con violencia)`,
+    order.by = delitos_por_dia_2020$fecha)->robo_violencia_2020_xts
+
+
+delitos_2020_xts<-cbind(homicidios_2020_xts,
+                        hurto_SinViolencia_2020_xts,
+                        lesiones_2020_xts,
+                        robo_violencia_2020_xts)
+  
+  
+  
+  
+  dygraph(delitos_2020_xts, ylab = "Frecuencia delitos", 
+        main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2020")%>%
+  dySeries( label = "Homicidios")%>%
+  dySeries( label = "Robos sin violencia")%>%
+  dySeries(label = "Lesiones")%>%
+  dySeries(label = "Robos con violencia")%>%
+  dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+  dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+  dyLegend(width = 400)%>%
+  dyRangeSelector()%>%
+  dyEvent("2020-03-20", "Inicio ASPO", labelLoc = "top")
+  
+  
+ 
+  
+
 
 
 ```
