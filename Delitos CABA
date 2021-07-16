@@ -863,7 +863,77 @@ Mapa_2017
 
 
 
+#########Mapa 2018###########
 
+
+Delitos_2018<-Delitos_2018%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+
+
+#Luego de hacer lo especificado arriba, aquí lo que hago es agrupar por intervalos para luego, a dicho intervalo, asígnarle una categoria correspondiente al momento del dia al que corresponden dichos intervalos
+Delitos_2018<-Delitos_2018%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"Mañana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
+Numero_delitos_2018 <-Delitos_2018$tipo_delito%>%unique()%>%length()
+
+
+#Luego creamos otro vector con el nombre de los tipos de delitos
+Nombres_delitos_2018 <-Delitos_2018$tipo_delito%>%unique()
+
+#Creamos un vector con los colores para los tipos de delito
+colores<- c('#1b9e77','#d95f02','#7570b3','#e7298a')
+
+#Ahora creamos la paleta de colores, asignando un color a cada tipo
+#de delito
+paleta_2018 <- colorFactor(colores, domain = Nombres_delitos_2018)
+
+
+Nombres_pres <- list()
+for (i in 1:length(Nombres_delitos_2018)) {
+  Nombres_pres[[i]]<-Delitos_2018%>%dplyr::filter(tipo_delito == Nombres_delitos_2018[i])
+}
+names(Nombres_pres) <- Nombres_delitos_2018 
+
+
+
+###
+
+Mapa_2018<-leaflet()%>%addTiles()
+for (i in 1:length(Nombres_pres)) {
+  Mapa_2018 <- Mapa_2018 %>% 
+    addProviderTiles(providers$CartoDB.DarkMatter)%>%
+    addCircles(data = Nombres_pres[[i]],
+               lat = ~lat, lng = ~long, 
+               color = ~paleta_2018(tipo_delito),
+               fillOpacity = 0.5,
+               label = ~subtipo_delito,
+               popup = ~momento_del_dia,
+               group = Nombres_delitos_2018[i])
+}
+
+
+
+
+Mapa_2018<-Mapa_2018 %>%
+  leaflet::addLegend(data = Delitos_2018, "bottomright",
+                     pal = paleta, values = ~tipo_delito,
+                     title = "Delitos", opacity = 1,
+                     group = "Leyenda")
+
+
+
+
+
+
+Grupos <- c("Leyenda", Nombres_delitos_2018)
+Mapa_2018 <- Mapa_2018 %>% addLayersControl(overlayGroups = Grupos,
+                                            options = layersControlOptions(collapsed = T))
+
+
+
+
+Mapa_2018
 
 
 
