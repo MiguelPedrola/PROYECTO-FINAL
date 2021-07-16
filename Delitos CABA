@@ -803,6 +803,75 @@ Mapa_2016_prueba_3 <- Mapa_2016_prueba_3 %>% addLayersControl(overlayGroups = Gr
 Mapa_2016_prueba_3
 
 
+#####mapa 2017##############
+
+Nombres_delitos_2017 <-Delitos_2017$tipo_delito%>%unique()
+
+#Creamos un vector con los colores para los tipos de delito
+colores<- c('#1b9e77','#d95f02','#7570b3','#e7298a')
+
+#Ahora creamos la paleta de colores, asignando un color a cada tipo
+#de delito
+paleta_2017 <- colorFactor(colores, domain = Nombres_delitos_2017)
+
+
+Nombres_pres <- list()
+for (i in 1:length(Nombres_delitos_2017)) {
+  Nombres_pres[[i]]<-Delitos_2017%>%dplyr::filter(tipo_delito == Nombres_delitos_2017[i])
+}
+names(Nombres_pres) <- Nombres_delitos_2017 
+
+
+
+###
+
+Mapa_2017<-leaflet()%>%addTiles()
+for (i in 1:length(Nombres_pres)) {
+  Mapa_2017 <- Mapa_2017 %>% 
+    addProviderTiles(providers$CartoDB.DarkMatter)%>%
+    addCircles(data = Nombres_pres[[i]],
+               lat = ~lat, lng = ~long, 
+               color = ~paleta_2017(tipo_delito),
+               fillOpacity = 0.5,
+               label = ~subtipo_delito,
+               popup = ~tipo_delito,
+               group = Nombres_delitos_2017[i])
+}
+
+
+
+
+Mapa_2017<-Mapa_2017 %>%
+  leaflet::addLegend(data = Delitos_2017, "bottomright",
+                     pal = paleta, values = ~tipo_delito,
+                     title = "Delitos", opacity = 1,
+                     group = "Leyenda")
+
+
+
+
+
+
+Grupos <- c("Leyenda", Nombres_delitos_2017)
+Mapa_2017 <- Mapa_2017 %>% addLayersControl(overlayGroups = Grupos,
+                                                              options = layersControlOptions(collapsed = T))
+
+
+
+
+Mapa_2017
+
+
+
+
+
+
+
+
+
+
+
+
 ####Probando grafico de lineas###
 #########Probando con datos de 2016-2017-2018######
 Delitos_2016%>%
