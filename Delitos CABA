@@ -774,7 +774,7 @@ for (i in 1:length(Nombres_pres)) {
     lat = ~lat, lng = ~long, 
     color = ~paleta(tipo_delito),
     fillOpacity = 0.5,
-    label = ~tipo_delito,
+    label = ~subtipo_delito,
     popup = ~momento_del_dia,
     group = Nombres_delitos_2016[i])
 }
@@ -805,6 +805,17 @@ Mapa_2016_prueba_3
 
 #####mapa 2017##############
 
+
+
+Delitos_2017<-Delitos_2017%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+
+
+#Luego de hacer lo especificado arriba, aquí lo que hago es agrupar por intervalos para luego, a dicho intervalo, asígnarle una categoria correspondiente al momento del dia al que corresponden dichos intervalos
+Delitos_2017<-Delitos_2017%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"Mañana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
 Nombres_delitos_2017 <-Delitos_2017$tipo_delito%>%unique()
 
 #Creamos un vector con los colores para los tipos de delito
@@ -834,7 +845,7 @@ for (i in 1:length(Nombres_pres)) {
                color = ~paleta_2017(tipo_delito),
                fillOpacity = 0.5,
                label = ~subtipo_delito,
-               popup = ~tipo_delito,
+               popup = ~momento_del_dia,
                group = Nombres_delitos_2017[i])
 }
 
