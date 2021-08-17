@@ -1,0 +1,1334 @@
+### Librerias
+library(shiny)
+library(shinythemes)
+library(tidyverse)
+library(ggplot2)
+library(leaflet)
+library(lubridate)
+library(sf)
+library(xts)
+library(dygraphs)
+library(highcharter)
+library(zoo)
+library(leaflet)
+library(leaflet.extras)
+library(rworldxtra)
+library(raster)
+library(sp)
+library(Rcpp)
+library(httr)    
+library(echarts4r)
+library(rsconnect)
+rm(list = ls())
+
+######### cosas
+
+#Aqui cargamos los datasets
+
+
+Delitos_2020<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-justicia-y-seguridad/delitos/delitos_2020.csv")
+Delitos_2019<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-justicia-y-seguridad/delitos/delitos_2019.csv")
+Delitos_2018<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-justicia-y-seguridad/delitos/delitos_2018.csv")
+Delitos_2017<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-justicia-y-seguridad/delitos/delitos_2017.csv")
+Delitos_2016<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-justicia-y-seguridad/delitos/delitos_2016.csv")
+Comisarias_Caba<-read_csv("https://cdn.buenosaires.gob.ar/datosabiertos/datasets/comisarias-policia-de-la-ciudad/comisarias-policia-de-la-ciudad.csv")
+comunas_caba <- st_read('https://bitsandbricks.github.io/data/CABA_comunas.geojson')
+rivadavia_avenida<-st_read('https://bitsandbricks.github.io/data/avenida_rivadavia.geojson')
+barrios <- st_read("http://cdn.buenosaires.gob.ar/datosabiertos/datasets/barrios/barrios.geojson")
+
+
+
+
+#Aqui haremos las primeras modificaciones necesarias para luego realizar visualizaciones posteriores
+
+#Aqui lo que hacemos es, dar vuelta el orden de las observaciones dentro de la variable fecha, para que estas coincidan con el orden de las observaciones de la variable fecha de los demas datasets
+dmy(Delitos_2019$fecha)->Delitos_2019$fecha
+dmy(Delitos_2020$fecha)->Delitos_2020$fecha
+
+#Aqui lo que hacemos es crear la variable dias para cada dataset
+weekdays(Delitos_2016$fecha)->Delitos_2016$Dias
+weekdays(Delitos_2017$fecha)->Delitos_2017$Dias
+weekdays(Delitos_2018$fecha)->Delitos_2018$Dias
+weekdays(Delitos_2019$fecha)->Delitos_2019$Dias
+weekdays(Delitos_2020$fecha)->Delitos_2020$Dias
+
+#Aqui creamos la variable momento del dia a partir de la variable franja horaria
+Delitos_2016<-Delitos_2016%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+Delitos_2016<-Delitos_2016%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"MaÃÂ±ana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
+Delitos_2017<-Delitos_2017%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+Delitos_2017<-Delitos_2017%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"MaÃÂ±ana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
+Delitos_2018<-Delitos_2018%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+Delitos_2018<-Delitos_2018%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"MaÃÂ±ana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
+Delitos_2019<-Delitos_2019%>%mutate(franja_horaria=case_when(franja_horaria==1~1, franja_horaria==2~2, franja_horaria==3~3, franja_horaria==4~4, franja_horaria==5~5, franja_horaria==6~6, franja_horaria==7~7, franja_horaria==8~8, franja_horaria==9~9, franja_horaria==10~10, franja_horaria==11~11, franja_horaria==12~12, franja_horaria==13~13, franja_horaria==14~14, franja_horaria==15~15, franja_horaria==16~16, franja_horaria==17~17, franja_horaria==18~18, franja_horaria==19~19, franja_horaria==20~20, franja_horaria==21~21, franja_horaria==22~22, franja_horaria==23~23, franja_horaria==0~24))
+
+Delitos_2019<-Delitos_2019%>%mutate(momento_del_dia=case_when(franja_horaria>=7 & franja_horaria <=12 ~"MaÃÂ±ana", franja_horaria>=13 & franja_horaria <=19 ~"Tarde", franja_horaria >= 20 & franja_horaria <=24 ~"Noche", franja_horaria >=1 & franja_horaria <=6 ~"Madrugada"))
+
+
+
+Delitos_2020<-Delitos_2020%>%mutate(franja=case_when(franja==1~1, franja==2~2, franja==3~3, franja==4~4, franja==5~5, franja==6~6, franja==7~7, franja==8~8, franja==9~9, franja==10~10, franja==11~11, franja==12~12, franja==13~13, franja==14~14, franja==15~15, franja==16~16, franja==17~17, franja==18~18, franja==19~19, franja==20~20, franja==21~21, franja==22~22, franja==23~23, franja==0~24))
+
+Delitos_2020<-Delitos_2020%>%mutate(momento_del_dia=case_when(franja>=7 & franja <=12 ~"MaÃÂ±ana", franja>=13 & franja <=19 ~"Tarde", franja >= 20 & franja <=24 ~"Noche", franja >=1 & franja <=6 ~"Madrugada"))
+
+
+
+#Aqui creamos la variable mes para todos los dataset
+
+Delitos_2016%>%mutate(
+    mes=substr(fecha, 6, 7)
+)->Delitos_2016
+
+base::as.numeric(Delitos_2016$mes)->Delitos_2016$mes
+
+Delitos_2016%>%mutate(
+    mes=case_when(mes==1~"Enero",mes==2~"Febrero",
+                  mes==3~"Marzo", mes==4~"Abril",
+                  mes==5~"Mayo", mes==6~"Junio",
+                  mes==7~"Julio", mes==8~"Agosto",
+                  mes==9~"Septiembre", mes==10~"Octubre",
+                  mes==11~"Noviembre",mes==12~"Diciembre"))->Delitos_2016
+
+
+
+Delitos_2017%>%mutate(
+    mes=substr(fecha, 6, 7)
+)->Delitos_2017
+
+base::as.numeric(Delitos_2017$mes)->Delitos_2017$mes
+
+Delitos_2017%>%mutate(
+    mes=case_when(mes==1~"Enero",mes==2~"Febrero",
+                  mes==3~"Marzo", mes==4~"Abril",
+                  mes==5~"Mayo", mes==6~"Junio",
+                  mes==7~"Julio", mes==8~"Agosto",
+                  mes==9~"Septiembre", mes==10~"Octubre",
+                  mes==11~"Noviembre",mes==12~"Diciembre"))->Delitos_2017
+
+
+
+Delitos_2018%>%mutate(
+    mes=substr(fecha, 6, 7)
+)->Delitos_2018
+
+base::as.numeric(Delitos_2018$mes)->Delitos_2018$mes
+
+Delitos_2018%>%mutate(
+    mes=case_when(mes==1~"Enero",mes==2~"Febrero",
+                  mes==3~"Marzo", mes==4~"Abril",
+                  mes==5~"Mayo", mes==6~"Junio",
+                  mes==7~"Julio", mes==8~"Agosto",
+                  mes==9~"Septiembre", mes==10~"Octubre",
+                  mes==11~"Noviembre",mes==12~"Diciembre"))->Delitos_2018
+
+
+
+Delitos_2019%>%mutate(
+    mes=substr(fecha, 6, 7)
+)->Delitos_2019
+
+base::as.numeric(Delitos_2019$mes)->Delitos_2019$mes
+
+Delitos_2019%>%mutate(
+    mes=case_when(mes==1~"Enero",mes==2~"Febrero",
+                  mes==3~"Marzo", mes==4~"Abril",
+                  mes==5~"Mayo", mes==6~"Junio",
+                  mes==7~"Julio", mes==8~"Agosto",
+                  mes==9~"Septiembre", mes==10~"Octubre",
+                  mes==11~"Noviembre",mes==12~"Diciembre"))->Delitos_2019
+
+
+
+Delitos_2020%>%mutate(
+    mes=substr(fecha, 6, 7)
+)->Delitos_2020
+
+base::as.numeric(Delitos_2020$mes)->Delitos_2020$mes
+
+Delitos_2020%>%mutate(
+    mes=case_when(mes==1~"Enero",mes==2~"Febrero",
+                  mes==3~"Marzo", mes==4~"Abril",
+                  mes==5~"Mayo", mes==6~"Junio",
+                  mes==7~"Julio", mes==8~"Agosto",
+                  mes==9~"Septiembre", mes==10~"Octubre",
+                  mes==11~"Noviembre",mes==12~"Diciembre"))->Delitos_2020
+
+
+
+#Aqui lo que vamos a hacer es ordenar los datos de la variable mes para luego poder graficarlos con higcharther
+
+
+#Para 2016
+Delitos_2016%>%mutate(
+    meses=substr(fecha, 6, 7)
+)->Delitos_2016
+
+base::as.numeric(Delitos_2016$meses)->Delitos_2016$meses
+
+#Para 2017
+Delitos_2017%>%mutate(
+    meses=substr(fecha, 6, 7)
+)->Delitos_2017
+
+base::as.numeric(Delitos_2017$meses)->Delitos_2017$meses
+
+
+#Para 2018
+Delitos_2018%>%mutate(
+    meses=substr(fecha, 6, 7)
+)->Delitos_2018
+
+base::as.numeric(Delitos_2018$meses)->Delitos_2018$meses
+
+#Para 2019
+Delitos_2019%>%mutate(
+    meses=substr(fecha, 6, 7)
+)->Delitos_2019
+
+base::as.numeric(Delitos_2019$meses)->Delitos_2019$meses
+
+#Para 2020
+Delitos_2020%>%mutate(
+    meses=substr(fecha, 6, 7)
+)->Delitos_2020
+
+base::as.numeric(Delitos_2020$meses)->Delitos_2020$meses
+
+
+#Aqui lo que vamos a crear son los datasets, correspondientes a cada año, para luego visualizarlos mediante el paquete dygraphs
+
+#Para 2016
+Delitos_2016%>%
+    group_by(fecha, tipo_delito)%>%
+    summarise(cantidad=n())%>%
+    spread(tipo_delito, cantidad)%>%
+    arrange(fecha)->Delitos_2016_xts
+
+homicidios_xts<-
+    xts(Delitos_2016_xts$Homicidio, order.by = Delitos_2016_xts$fecha)
+
+Hurto_SinViolencia_xts<-
+    xts(Delitos_2016_xts$`Hurto (sin violencia)`, order.by = Delitos_2016_xts$fecha)
+
+Lesiones_xts<-
+    xts(Delitos_2016_xts$Lesiones, order.by = Delitos_2016_xts$fecha)
+
+robo_violencia<-
+    xts(Delitos_2016_xts$`Robo (con violencia)`, order.by = Delitos_2016_xts$fecha)
+
+Delitos_2016_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+
+#Para 2017
+Delitos_2017%>%
+    group_by(fecha, tipo_delito)%>%
+    summarise(cantidad=n())%>%
+    spread(tipo_delito, cantidad)%>%
+    arrange(fecha)->Delitos_2017_xts
+
+homicidios_xts<-
+    xts(Delitos_2017_xts$Homicidio, order.by = Delitos_2017_xts$fecha)
+
+Hurto_SinViolencia_xts<-
+    xts(Delitos_2017_xts$`Hurto (sin violencia)`, order.by = Delitos_2017_xts$fecha)
+
+Lesiones_xts<-
+    xts(Delitos_2017_xts$Lesiones, order.by = Delitos_2017_xts$fecha)
+
+robo_violencia<-
+    xts(Delitos_2017_xts$`Robo (con violencia)`, order.by = Delitos_2017_xts$fecha)
+
+Delitos_2017_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+#Para 2018
+Delitos_2018%>%
+    group_by(fecha, tipo_delito)%>%
+    summarise(cantidad=n())%>%
+    spread(tipo_delito, cantidad)%>%
+    arrange(fecha)->Delitos_2018_xts
+
+homicidios_xts<-
+    xts(Delitos_2018_xts$Homicidio, order.by = Delitos_2018_xts$fecha)
+
+Hurto_SinViolencia_xts<-
+    xts(Delitos_2018_xts$`Hurto (sin violencia)`, order.by = Delitos_2018_xts$fecha)
+
+Lesiones_xts<-
+    xts(Delitos_2018_xts$Lesiones, order.by = Delitos_2018_xts$fecha)
+
+robo_violencia<-
+    xts(Delitos_2018_xts$`Robo (con violencia)`, order.by = Delitos_2018_xts$fecha)
+
+Delitos_2018_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+
+#para 2019
+Delitos_2019%>%
+    group_by(fecha, tipo_delito)%>%
+    summarise(cantidad=n())%>%
+    spread(tipo_delito, cantidad)%>%
+    arrange(fecha)->Delitos_2019_xts
+
+homicidios_xts<-
+    xts(Delitos_2019_xts$Homicidio, order.by = Delitos_2019_xts$fecha)
+
+Hurto_SinViolencia_xts<-
+    xts(Delitos_2019_xts$`Hurto (sin violencia)`, order.by = Delitos_2019_xts$fecha)
+
+Lesiones_xts<-
+    xts(Delitos_2019_xts$Lesiones, order.by = Delitos_2019_xts$fecha)
+
+robo_violencia<-
+    xts(Delitos_2019_xts$`Robo (con violencia)`, order.by = Delitos_2019_xts$fecha)
+
+Delitos_2019_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+
+#Para 2020
+Delitos_2020%>%
+    group_by(fecha, tipo)%>%
+    summarise(cantidad=n())%>%
+    spread(tipo, cantidad)%>%
+    arrange(fecha)->Delitos_2020_xts
+
+homicidios_xts<-
+    xts(Delitos_2020_xts$Homicidio, order.by = Delitos_2020_xts$fecha)
+
+Hurto_SinViolencia_xts<-
+    xts(Delitos_2020_xts$`Hurto (sin violencia)`, order.by = Delitos_2020_xts$fecha)
+
+Lesiones_xts<-
+    xts(Delitos_2020_xts$Lesiones, order.by = Delitos_2020_xts$fecha)
+
+robo_violencia<-
+    xts(Delitos_2020_xts$`Robo (con violencia)`, order.by = Delitos_2020_xts$fecha)
+
+Delitos_2020_xts<-cbind(homicidios_xts, Hurto_SinViolencia_xts, Lesiones_xts, robo_violencia)
+
+
+
+
+#Aqui lo que haremos es crear los objetos necesarios para luego realizar las visualizaciones de mapas mediante el paquete leaflet
+
+#Creamos un vector con el nombre de los tipos de delitos
+Nombres_delitos <-Delitos_2016$tipo_delito%>%unique()
+
+#Creamos un vector con los colores para los tipos de delito
+colores<- c('#1b9e77','#d95f02','#7570b3','#e7298a')
+
+#Ahora creamos la paleta de colores, asignando un color a cada tipo
+#de delito
+paleta <- colorFactor(colores, domain = Nombres_delitos)
+
+
+
+
+################ APPP
+
+
+ui <- fluidPage(
+    theme = shinytheme("cosmo"),
+    
+    
+    titlePanel(title= h1(strong("Analisi estadistico del delito en CABA"))),
+    h3(strong("Una aproximacion al analisis de datos mediante el lenguaje de programacion en R ")),
+    
+    tabsetPanel(
+        tabPanel("Introduccion",
+                 mainPanel(
+                     shiny::br(),
+                     h3(strong("Intencionalidad del Proyecto")),
+                     p("El siguiente proyecto tiene como fin aplicar los recursos aprendidos en el transcurso del
+                                    curso de Social Data Analytics de la Escuela Argentina de Nuevas Tecnologias. El objetivo
+                                    principal del proyecto, es aportar un analisis estadistico descriptivo de los delitos en la Ciudad
+                                    Autonoma de Buenos Aires, realizado mediante el lenguaje de programacion R. Para esto se
+                                    utilizaron las bases de datos aportadas por el Gobierno de la Ciudad de Buenos Aires, los
+                                    datos aportados componen desde enero de 2016 hasta diciembre de 2020."),
+                     br(),
+                     p("En algunos graficos, hemos excluidos aquellos delitos relacionados con siniestros viales
+                       y lesiones, ya que entendemos que responden a factores muy distintos
+                       a la del resto de los delitos."),
+                     br(),
+                     br(),
+                     p("Bibliografia:"),
+                     p("https://bitsandbricks.github.io/ciencia_de_datos_gente_sociable/"),
+                     p("https://es.r4ds.hadley.nz/index.html"),
+                     p("https://rafael-zambrano-blog-ds.netlify.app/posts/2020-12-22-prediccin-de-delitos-en-caba/#resumen"),
+                     p("https://pmoracho.github.io/blog/2021/05/01/30-dias-de-graficos-en-r/")
+                 )
+        ),
+        tabPanel("Delitos por Fecha",
+                 navlistPanel("Por favor, seleccione un año:",
+                              tabPanel("2016",
+                                       dygraphOutput("dygraph1"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2017",
+                                       dygraphOutput("dygraph2"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2018",
+                                       dygraphOutput("dygraph3"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2019",
+                                       dygraphOutput("dygraph4"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2020",
+                                       dygraphOutput("dygraph5"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              )
+                 )
+        ),
+        tabPanel("Mapas",
+                 p("Aqui lo que encontraran, seran mapas en donde, cada punto representa el lugar
+                          exacto en donde ocurrio un crimen. En estos graficamos no aislamos aquellos delitos
+                          relacionados a los sinisestros viales y lesiones, ya que nos parecia interesante poder
+                          visualizar los lugares de mayor ocurrencia de dicho tipo de delitos."),
+                 p("Los mapas son de tipo interactivo, ya que como veran, no solo se puede seleccionar un rango
+                   de fecha de ocurrencia del delito, sino que tambien, se podra cambiar tanto las capas de 
+                   los mapas, como tambien sacar o agregar las geometrias de poligonos correspondientes a 
+                   los barrios y comunas de la ciudad. Por otro lado, al posar el cursor sobre cada punto,
+                   se le indicara el dia en que ocurrio dicho delito, y al apretar el cursor sobre cada punto,
+                   se le indicara el momento del dia en que ocurrio dicho delito."),
+                 navlistPanel("Por favor, seleccione un año:",
+                              tabPanel('2016',
+                                       dateRangeInput(inputId = "date",
+                                                      label = "Seleccione un rango de fechas:",
+                                                      start = '2016-01-01',
+                                                      end = '2016-01-07',
+                                                      min = '2016-01-01',
+                                                      max = '2016-12-31'
+                                       ),
+                                       leafletOutput("leaflet1"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)"),
+                                       br(),
+                                       plotOutput("tabla_cantidad1")
+                              ),
+                              tabPanel('2017',
+                                       dateRangeInput(inputId = "date2",
+                                                      label = "Seleccione un rango de fechas:",
+                                                      start = '2017-01-01',
+                                                      end = '2017-01-07',
+                                                      min = '2017-01-01',
+                                                      max = '2017-12-31'
+                                       ),
+                                       leafletOutput("leaflet2"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonomade Buenos Aires (2021)"),
+                                       br(),
+                                       plotOutput("tabla_cantidad2")
+                              ),
+                              tabPanel('2018',
+                                       dateRangeInput(inputId = "date3",
+                                                      label = "Seleccione un rango de fechas:",
+                                                      start = '2018-01-01',
+                                                      end = '2018-01-07',
+                                                      min = '2018-01-01',
+                                                      max = '2018-12-31'
+                                       ),
+                                       leafletOutput("leaflet3"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)"),
+                                       br(),
+                                       plotOutput("tabla_cantidad3")
+                              ),
+                              tabPanel('2019',
+                                       dateRangeInput(inputId = "date4",
+                                                      label = "Seleccione un rango de fechas:",
+                                                      start = '2019-01-01',
+                                                      end = '2019-01-07',
+                                                      min = '2019-01-01',
+                                                      max = '2019-12-31'
+                                       ),
+                                       leafletOutput("leaflet4"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel('2020',
+                                       dateRangeInput(inputId = "date5",
+                                                      label = "Seleccione un rango de fechas:",
+                                                      start = '2020-01-01',
+                                                      end = '2020-01-07',
+                                                      min = '2020-01-01',
+                                                      max = '2020-12-31'
+                                       ),
+                                       leafletOutput("leaflet5"),
+                                       helpText("Fuente: Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                                       
+                              ))
+        ),
+        tabPanel("Delitos por dia",
+                 navlistPanel("Por favor, seleccione un año:",
+                              tabPanel("2016",
+                                       highchartOutput("delito_por_dia1"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2017",
+                                       highchartOutput("delito_por_dia2"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2018",
+                                       highchartOutput("delito_por_dia3"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2019",
+                                       highchartOutput("delito_por_dia4"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2020",
+                                       highchartOutput("delito_por_dia5"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                                       
+                              ))
+        ),
+        tabPanel("Delitos por Mes",
+                 navlistPanel("Por favor, seleccione un año:",
+                              tabPanel("2016",
+                                       highchartOutput("delito_por_mes1"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2017",
+                                       highchartOutput("delito_por_mes2"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2018",
+                                       highchartOutput("delito_por_mes3"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2019",
+                                       highchartOutput("delito_por_mes4"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2020",
+                                       highchartOutput("delito_por_mes5"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                                       
+                              ))
+        ),
+        
+        
+        
+        
+        
+        tabPanel("Estructura del delito",
+                 mainPanel(
+                     highchartOutput("variabilidad_delito"))
+        ),
+        tabPanel("Calendario del delito",
+                 navlistPanel("Por favor, selecione un año",
+                              tabPanel("2016",
+                                       echarts4rOutput("calendario_1"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2017",
+                                       echarts4rOutput("calendario_2"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2018",
+                                       echarts4rOutput("calendario_3"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2019",
+                                       echarts4rOutput("calendario_4"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              ),
+                              tabPanel("2020",
+                                       echarts4rOutput("calendario_5"),
+                                       helpText("Datos abiertos del Ministerio de Justicia y Seguridad de la Ciudad Autonoma de Buenos Aires (2021)")
+                              )
+                 )
+        ),
+        tabPanel("Creditos",
+                 mainPanel(
+                     shiny::br(),
+                     h3(strong("Autores")),
+                     helpText(strong("Ruoppulo Ramiro")),
+                     helpText("Estudiante de Sociologia (UNL)"),
+                     helpText(tags$a("LinkedIn",href="https://www.linkedin.com/in/ramiro-ruoppulo-7a21851a6/")),
+                     shiny::hr(),
+                     helpText(strong("Cosentino Renzo")),
+                     helpText("Estudiante de Sociologia (UNL)"),
+                     helpText(tags$a("LinkedIn", href="https://www.linkedin.com/in/renzo-cosentino-987724216/")),
+                     shiny::hr(),
+                     helpText(strong("De Santis Octavio")),
+                     helpText("Estudiante de Relaciones Internacionales (UTDT)"),
+                     helpText(tags$a("LinkedIn",href="https://www.linkedin.com/in/octavio-de-santis-9a9711192")),
+                     shiny::hr(),
+                     helpText(strong("Pedrola Miguel")),
+                     helpText("Estudiante de Relaciones Internacionales (UTDT)"),
+                     helpText(tags$a("LinkedIn", href="https://www.linkedin.com/in/miguel-pedrola-58a4461aa")),
+                     shiny::hr(),
+                     helpText("Este trabajo fue presentado como entrega final correspondiente al curso de 'Social Data Analitics' de Escuela Argentina de Nuevas Tecnologias"),
+                     shiny::hr(),
+                     helpText(tags$a("Codigo y bases de datos", href="https://github.com/MiguelPedrola/PROYECTO-FINAL"))
+                 ))
+    )
+)
+
+
+
+
+
+
+
+#### server##############################################################################################
+
+server <- function(input,output, session) {
+    
+    Delitos_2016_f <- reactive({
+        Delitos_2016[
+            Delitos_2016$fecha >= input$date[1] &
+                Delitos_2016$fecha <= input$date[2],]
+    })
+    Delitos_2017_f <- reactive({
+        Delitos_2017[
+            Delitos_2017$fecha >= input$date2[1] &
+                Delitos_2017$fecha <= input$date2[2],]
+    })
+    Delitos_2018_f <- reactive({
+        Delitos_2018[
+            Delitos_2018$fecha >= input$date3[1] &
+                Delitos_2018$fecha <= input$date3[2],]
+    })
+    Delitos_2019_f <- reactive({
+        Delitos_2019[
+            Delitos_2019$fecha >= input$date4[1] &
+                Delitos_2019$fecha <= input$date4[2],]
+    })
+    Delitos_2020_f <- reactive({
+        Delitos_2020[
+            Delitos_2020$fecha >= input$date5[1] &
+                Delitos_2020$fecha <= input$date5[2],]
+    })
+    
+    
+    output$dygraph1 <- renderDygraph({
+        dygraph(Delitos_2016_xts, ylab = "Frecuencia", 
+                main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2016")%>%
+            dySeries( label = "Homicidios")%>%
+            dySeries( label = "Robos sin violencia")%>%
+            dySeries(label = "Lesiones")%>%
+            dySeries(label = "Robos con violencia")%>%
+            dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+            dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+            dyLegend(width = 400)%>%
+            dyRangeSelector()
+    })
+    
+    output$dygraph2 <- renderDygraph({
+        dygraph(Delitos_2017_xts, ylab = "Frecuencia delitos", 
+                main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2017")%>%
+            dySeries( label = "Homicidios")%>%
+            dySeries( label = "Robos sin violencia")%>%
+            dySeries(label = "Lesiones")%>%
+            dySeries(label = "Robos con violencia")%>%
+            dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+            dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+            dyLegend(width = 400)%>%
+            dyRangeSelector()
+    })
+    
+    output$dygraph3 <- renderDygraph({
+        dygraph(Delitos_2018_xts, ylab = "Frecuencia delitos", 
+                main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2018")%>%
+            dySeries( label = "Homicidios")%>%
+            dySeries( label = "Robos sin violencia")%>%
+            dySeries(label = "Lesiones")%>%
+            dySeries(label = "Robos con violencia")%>%
+            dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+            dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+            dyLegend(width = 400)%>%
+            dyRangeSelector()
+    })
+    output$dygraph4 <- renderDygraph({
+        dygraph(Delitos_2019_xts, ylab = "Frecuencia delitos", 
+                main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2019")%>%
+            dySeries( label = "Homicidios")%>%
+            dySeries( label = "Robos sin violencia")%>%
+            dySeries(label = "Lesiones")%>%
+            dySeries(label = "Robos con violencia")%>%
+            dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+            dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+            dyLegend(width = 400)%>%
+            dyRangeSelector()
+    })
+    output$dygraph5 <- renderDygraph({
+        dygraph(Delitos_2020_xts, ylab = "Frecuencia delitos", 
+                main = "Frecuencia de delitos ocurridos por fecha en CABA-Año 2020")%>%
+            dySeries( label = "Homicidios")%>%
+            dySeries( label = "Robos sin violencia")%>%
+            dySeries(label = "Lesiones")%>%
+            dySeries(label = "Robos con violencia")%>%
+            dyOptions(colors = RColorBrewer::brewer.pal(4, "Set2"))%>%
+            dyOptions(fillGraph = T, fillAlpha = 0.4)%>%
+            dyLegend(width = 400)%>%
+            dyRangeSelector()%>%
+            dyEvent("2020-03-20", "Inicio ASPO", labelLoc = "top")
+    })
+    
+    
+    output$leaflet1<- renderLeaflet ({
+        leaflet(data=Delitos_2016_f())%>%
+            setView(lng = -58.445531, lat = -34.606653, zoom = 12)%>%
+            addProviderTiles(providers$OpenStreetMap.France, group = "OpenStreetMap.France")%>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter")%>%
+            addCircles(lat = ~lat, lng = ~long, 
+                       color = ~paleta(tipo_delito),
+                       fillOpacity = 0.5,
+                       label = ~Dias,
+                       popup = ~momento_del_dia,
+                       group = "Delitos")%>%
+            addPolygons(data = barrios,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Barrios",
+                        label = ~barrio,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            addPolygons(data = comunas_caba,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Comunas",
+                        label = ~comunas,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            leaflet::addLegend(data=Delitos_2016, "bottomright",
+                               pal=paleta,
+                               values= ~tipo_delito,
+                               title = "Tipo de Delitos",
+                               opacity=0.5,
+                               group="Leyenda")%>%
+            leaflet::addLayersControl(overlayGroups =c("Comunas", "Barrios"),
+                                      options = layersControlOptions(collapsed = T),
+                                      baseGroups = c("OpenStreetMap.France",
+                                                     "CartoDB.DarkMatter"))%>%
+            hideGroup("Comunas")
+        
+        
+        
+        
+    })
+    output$tabla_cantidad1 <- renderPlot(
+        Delitos_2016 %>% 
+            na.exclude() %>% 
+            st_as_sf(coords = c("long","lat"), remove = FALSE,  crs = 4326) %>% 
+            st_join(comunas_caba)%>%
+            ggplot() +
+            geom_sf(data = comunas_caba, fill = "white") +
+            geom_sf(aes(color=tipo_delito, alpha = 1), size=1) +
+            theme_gray()+
+            labs(title = paste("CABA - Mapa del delito"), 
+                 subtitle = paste0("Delitos por tipo en la Ciudad de Buenos Aires - Año 2016\n") , 
+                 caption = "Fuente: data.buenosaires.gob.ar", 
+                 y = "", 
+                 x = ""
+            ) +
+            theme (axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   axis.title.y=element_blank(),
+                   axis.text.y=element_blank(),
+                   axis.ticks.y=element_blank(),
+                   legend.position = "none") +
+            facet_grid(cols = vars(tipo_delito))
+    )
+    
+    
+    output$leaflet2 <- renderLeaflet({
+        leaflet(data=Delitos_2017_f())%>%
+            setView(lng = -58.445531, lat = -34.606653, zoom = 12)%>%
+            addProviderTiles(providers$OpenStreetMap.France, group = "OpenStreetMap.France")%>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter")%>%
+            addCircles(lat = ~lat, lng = ~long, 
+                       color = ~paleta(tipo_delito),
+                       fillOpacity = 0.5,
+                       label = ~Dias,
+                       popup = ~momento_del_dia,
+                       group = "Delitos")%>%
+            addPolygons(data = barrios,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Barrios",
+                        label = ~barrio,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            addPolygons(data = comunas_caba,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Comunas",
+                        label = ~comunas,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            leaflet::addLegend(data=Delitos_2017, "bottomright",
+                               pal=paleta,
+                               values= ~tipo_delito,
+                               title = "Tipo de Delitos",
+                               opacity=0.5,
+                               group="Leyenda")%>%
+            leaflet::addLayersControl(overlayGroups =c("Comunas", "Barrios"),
+                                      options = layersControlOptions(collapsed = T),
+                                      baseGroups = c("OpenStreetMap.France",
+                                                     "CartoDB.DarkMatter"))%>%
+            hideGroup("Comunas")
+    })
+    
+    output$tabla_cantidad2 <- renderPlot(
+        Delitos_2017 %>% 
+            na.exclude() %>% 
+            st_as_sf(coords = c("long","lat"), remove = FALSE,  crs = 4326) %>% 
+            st_join(comunas_caba)%>%
+            ggplot() +
+            geom_sf(data = comunas_caba, fill = "white") +
+            geom_sf(aes(color=tipo_delito, alpha = 1), size=1) +
+            theme_gray()+
+            labs(title = paste("CABA - Mapa del delito"), 
+                 subtitle = paste0("Delitos por tipo en la Ciudad de Buenos Aires - Año 2017\n") , 
+                 caption = "Fuente: data.buenosaires.gob.ar", 
+                 y = "", 
+                 x = ""
+            ) +
+            theme (axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   axis.title.y=element_blank(),
+                   axis.text.y=element_blank(),
+                   axis.ticks.y=element_blank(),
+                   legend.position = "none") +
+            facet_grid(cols = vars(tipo_delito))
+    )
+    output$leaflet3 <- renderLeaflet({
+        leaflet(data=Delitos_2018_f())%>%
+            setView(lng = -58.445531, lat = -34.606653, zoom = 12)%>%
+            addProviderTiles(providers$OpenStreetMap.France, group = "OpenStreetMap.France")%>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter")%>%
+            addCircles(lat = ~lat, lng = ~long, 
+                       color = ~paleta(tipo_delito),
+                       fillOpacity = 0.5,
+                       label = ~Dias,
+                       popup = ~momento_del_dia,
+                       group = "Delitos")%>%
+            addPolygons(data = barrios,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Barrios",
+                        label = ~barrio,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            addPolygons(data = comunas_caba,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Comunas",
+                        label = ~comunas,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            leaflet::addLegend(data=Delitos_2018, "bottomright",
+                               pal=paleta,
+                               values= ~tipo_delito,
+                               title = "Tipo de Delitos",
+                               opacity=0.5,
+                               group="Leyenda")%>%
+            leaflet::addLayersControl(overlayGroups =c("Comunas", "Barrios"),
+                                      options = layersControlOptions(collapsed = T),
+                                      baseGroups = c("OpenStreetMap.France",
+                                                     "CartoDB.DarkMatter"))%>%
+            hideGroup("Comunas")
+        
+    })
+    
+    output$tabla_cantidad3 <- renderPlot(
+        Delitos_2018 %>% 
+            na.exclude() %>% 
+            st_as_sf(coords = c("long","lat"), remove = FALSE,  crs = 4326) %>% 
+            st_join(comunas_caba)%>%
+            ggplot() +
+            geom_sf(data = comunas_caba, fill = "white") +
+            geom_sf(aes(color=tipo_delito, alpha = 1), size=1) +
+            theme_gray()+
+            labs(title = paste("CABA - Mapa del delito"), 
+                 subtitle = paste0("Delitos por tipo en la Ciudad de Buenos Aires - Año 2018\n") , 
+                 caption = "Fuente: data.buenosaires.gob.ar", 
+                 y = "", 
+                 x = ""
+            ) +
+            theme (axis.text.x=element_blank(),
+                   axis.ticks.x=element_blank(),
+                   axis.title.y=element_blank(),
+                   axis.text.y=element_blank(),
+                   axis.ticks.y=element_blank(),
+                   legend.position = "none") +
+            facet_grid(cols = vars(tipo_delito))
+    )
+    output$leaflet4 <- renderLeaflet({
+        leaflet(data=Delitos_2019_f())%>%
+            setView(lng = -58.445531, lat = -34.606653, zoom = 12)%>%
+            addProviderTiles(providers$OpenStreetMap.France, group = "OpenStreetMap.France")%>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter")%>%
+            addCircles(lat = ~lat, lng = ~long, 
+                       color = ~paleta(tipo_delito),
+                       fillOpacity = 0.5,
+                       label = ~Dias,
+                       popup = ~momento_del_dia,
+                       group = "Delitos")%>%
+            addPolygons(data = barrios,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Barrios",
+                        label = ~barrio,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            addPolygons(data = comunas_caba,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Comunas",
+                        label = ~comunas,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            leaflet::addLegend(data=Delitos_2019, "bottomright",
+                               pal=paleta,
+                               values= ~tipo_delito,
+                               title = "Tipo de Delitos",
+                               opacity=0.5,
+                               group="Leyenda")%>%
+            leaflet::addLayersControl(overlayGroups =c("Comunas", "Barrios"),
+                                      options = layersControlOptions(collapsed = T),
+                                      baseGroups = c("OpenStreetMap.France",
+                                                     "CartoDB.DarkMatter"))%>%
+            hideGroup("Comunas")
+        
+        
+    })
+    output$leaflet5 <- renderLeaflet({
+        leaflet(data=Delitos_2020_f())%>%
+            setView(lng = -58.445531, lat = -34.606653, zoom = 12)%>%
+            addProviderTiles(providers$OpenStreetMap.France, group = "OpenStreetMap.France")%>%
+            addProviderTiles(providers$CartoDB.DarkMatter, group = "CartoDB.DarkMatter")%>%
+            addCircles(lat = ~latitud, lng = ~longitud, 
+                       color = ~paleta(tipo),
+                       fillOpacity = 0.5,
+                       label = ~Dias,
+                       popup = ~momento_del_dia,
+                       group = "Delitos")%>%
+            addPolygons(data = barrios,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Barrios",
+                        label = ~barrio,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            addPolygons(data = comunas_caba,
+                        weight = 2,
+                        opacity = 1,
+                        color = "#525252",
+                        dashArray = "3",
+                        fill=F,
+                        group = "Comunas",
+                        label = ~comunas,
+                        highlight = highlightOptions(weight = 5,
+                                                     color = "#F5C9BA",
+                                                     dashArray = "",
+                                                     fillOpacity = 0.7,
+                                                     bringToFront = TRUE),
+                        labelOptions = labelOptions(style = list("font-weight" = "normal", padding = "3px 8px"),
+                                                    textsize = "15px",
+                                                    direction = "auto"))%>%
+            leaflet::addLegend(data=Delitos_2020, "bottomright",
+                               pal=paleta,
+                               values= ~tipo,
+                               title = "Tipo de Delitos",
+                               opacity=0.5,
+                               group="Leyenda")%>%
+            leaflet::addLayersControl(overlayGroups =c("Comunas", "Barrios"),
+                                      options = layersControlOptions(collapsed = T),
+                                      baseGroups = c("OpenStreetMap.France",
+                                                     "CartoDB.DarkMatter"))%>%
+            hideGroup("Comunas")
+    })
+    
+    output$delito_por_dia1 <- renderHighchart(
+        Delitos_2016 %>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            group_by(Dias, tipo_delito)%>%
+            summarise(frecuencia=n())%>%
+            hchart("bar",
+                   hcaes(x=Dias,
+                         y=frecuencia,
+                         group=tipo_delito),
+                   stacking="nromal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por dia de la semana")%>%
+            hc_subtitle(text="CABA-Año 2016")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Dias"))
+    )
+    
+    output$delito_por_dia2 <- renderHighchart(
+        Delitos_2017 %>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            group_by(Dias, tipo_delito)%>%
+            summarise(frecuencia=n())%>%
+            hchart("bar",
+                   hcaes(x=Dias,
+                         y=frecuencia,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por dia de la semana")%>%
+            hc_subtitle(text="CABA-Año 2017")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Dias"))
+    )
+    
+    output$delito_por_dia3 <- renderHighchart(
+        Delitos_2018 %>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            group_by(Dias, tipo_delito)%>%
+            summarise(frecuencia=n())%>%
+            hchart("bar",
+                   hcaes(x=Dias,
+                         y=frecuencia,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por dia de la semana")%>%
+            hc_subtitle(text="CABA-Año 2018")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Dias"))
+    )
+    
+    output$delito_por_dia4 <- renderHighchart(
+        Delitos_2019 %>%
+            filter(tipo_delito != "Lesiones" | is.na(tipo_delito))%>%
+            group_by(Dias, tipo_delito)%>%
+            summarise(frecuencia=n())%>%
+            hchart("bar",
+                   hcaes(x=Dias,
+                         y=frecuencia,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por dia de la semana")%>%
+            hc_subtitle(text="CABA-Año 2019")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Dias"))
+    )
+    
+    output$delito_por_dia5 <- renderHighchart(
+        Delitos_2020 %>%
+            filter(subtipo != "Siniestro Vial" | is.na(subtipo))%>%
+            group_by(Dias, tipo)%>%
+            summarise(frecuencia=n())%>%
+            hchart("bar",
+                   hcaes(x=Dias,
+                         y=frecuencia,
+                         group=tipo),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por dia de la semana")%>%
+            hc_subtitle(text="CABA-Año 2020")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Dias"))
+    )
+    
+    output$delito_por_mes1 <- renderHighchart(
+        Delitos_2016%>%group_by(meses, mes, tipo_delito)%>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            summarise(cantidad=n())%>%
+            arrange(desc(meses))%>%
+            hchart("bar",
+                   hcaes(x=mes,
+                         y=cantidad,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por mes")%>%
+            hc_subtitle(text="CABA-Año 2016")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Meses"))
+    )
+    
+    output$delito_por_mes2 <- renderHighchart(
+        Delitos_2017%>%group_by(mes, meses, tipo_delito)%>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            summarise(cantidad=n())%>%
+            arrange(desc(meses))%>%
+            hchart("bar",
+                   hcaes(x=mes,
+                         y=cantidad,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por mes")%>%
+            hc_subtitle(text="CABA-Año 2017")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Meses"))
+    )
+    
+    output$delito_por_mes3 <- renderHighchart(
+        Delitos_2018%>%group_by(mes, meses, tipo_delito)%>%
+            filter(subtipo_delito != "Siniestro Vial" | is.na(subtipo_delito))%>%
+            summarise(cantidad=n())%>%
+            arrange(desc(meses))%>%
+            hchart("bar",
+                   hcaes(x=mes,
+                         y=cantidad,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia delitos por mes")%>%
+            hc_subtitle(text="CABA-Año 2018")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Meses"))
+    )
+    
+    output$delito_por_mes4 <- renderHighchart(
+        Delitos_2019%>%group_by(mes, meses, tipo_delito)%>%
+            filter(tipo_delito != "Lesiones" | is.na(tipo_delito))%>%
+            summarise(cantidad=n())%>%
+            arrange(desc(meses))%>%
+            hchart("bar",
+                   hcaes(x=mes,
+                         y=cantidad,
+                         group=tipo_delito),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por mes")%>%
+            hc_subtitle(text="CABA-Año 2019")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Meses"))
+    )
+    output$delito_por_mes5 <- renderHighchart(
+        Delitos_2020%>%group_by(mes, meses, tipo)%>%
+            filter(subtipo != "Siniestro Vial" | is.na(subtipo))%>%
+            summarise(cantidad=n())%>%
+            arrange(desc(meses))%>%
+            hchart("bar",
+                   hcaes(x=mes,
+                         y=cantidad,
+                         group=tipo),
+                   stacking="normal")%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Frecuencia de delitos por mes")%>%
+            hc_subtitle(text="CABA-Año 2020")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Meses"))
+    )
+    
+    
+    
+    output$variabilidad_delito <- renderHighchart(
+        Delitos_2020%>%
+            dplyr::rename(tipo_delito=tipo)%>%
+            bind_rows(Delitos_2019,
+                      Delitos_2018,
+                      Delitos_2017,
+                      Delitos_2016,
+                      Delitos_2020)%>%
+            mutate(anio_mes = format(fecha, "%Y/%m"))%>%
+            group_by(anio_mes, tipo_delito)%>%
+            summarise(cantidad=n())%>%
+            na.exclude(tipo_delito)%>%
+            hchart("line",
+                   hcaes(x=anio_mes, y=cantidad, group=tipo_delito))%>%
+            hc_add_theme(hc_theme_elementary())%>%
+            hc_title(text="Variabilidad de la estructura del delito")%>%
+            hc_subtitle(text="Año 2016-2020/CABA")%>%
+            hc_caption(text="Fuente: data.buenosaires.gob.ar")%>%
+            hc_yAxis(title=list(text="Frecuencia de delitos",
+                                aling="high",
+                                margin=10))%>%
+            hc_xAxis(title=list(text="Linea temporal"))%>%
+            hc_navigator(enabled=T)
+    )
+    
+    output$calendario_1 <- renderEcharts4r(
+        Delitos_2016%>%
+            dplyr::count(fecha) %>% 
+            dplyr::mutate(year = format(fecha, "%Y")) %>% 
+            group_by(year) %>% 
+            e_charts(fecha) %>%
+            e_calendar(range = "2016", top="150")%>%
+            e_heatmap(n, coord_system = "calendar") %>% 
+            e_visual_map(max = 470, min = 130, bottom = 100) %>% 
+            e_title("Calendario de delitos: Mes /Dia de la semana", "Numero de delitos ocurridos") %>% 
+            e_tooltip("item") 
+    )
+    
+    output$calendario_2 <- renderEcharts4r(
+        Delitos_2017%>%
+            dplyr::count(fecha) %>% 
+            dplyr::mutate(year = format(fecha, "%Y")) %>% 
+            group_by(year) %>% 
+            e_charts(fecha) %>%
+            e_calendar(range = "2017", top="150")%>%
+            e_heatmap(n, coord_system = "calendar") %>% 
+            e_visual_map(max = 500, min = 70, bottom = 100) %>% 
+            e_title("Calendario de delitos: Mes /Dia de la semana", "Numero de delitos ocurridos") %>% 
+            e_tooltip("item") 
+    )
+    
+    output$calendario_3 <- renderEcharts4r(
+        Delitos_2018%>%
+            dplyr::count(fecha) %>% 
+            dplyr::mutate(year = format(fecha, "%Y")) %>% 
+            group_by(year) %>% 
+            e_charts(fecha) %>%
+            e_calendar(range = "2018", top="150")%>%
+            e_heatmap(n, coord_system = "calendar") %>% 
+            e_visual_map(max = 470, min = 30, bottom = 100) %>% 
+            e_title("Calendario de delitos: Mes /Dia de la semana", "Numero de delitos ocurridos") %>% 
+            e_tooltip("item") 
+    )
+    
+    output$calendario_4 <-renderEcharts4r(
+        Delitos_2019%>%
+            dplyr::count(fecha) %>% 
+            dplyr::mutate(year = format(fecha, "%Y")) %>% 
+            group_by(year) %>% 
+            e_charts(fecha) %>%
+            e_calendar(range = "2019", top="150")%>%
+            e_heatmap(n, coord_system = "calendar") %>% 
+            e_visual_map(max = 470, min = 175, bottom = 100) %>% 
+            e_title("Calendario de delitos: Mes /Dia de la semana", "Numero de delitos ocurridos") %>% 
+            e_tooltip("item") 
+    )
+    
+    output$calendario_5 <- renderEcharts4r(
+        Delitos_2020%>%
+            dplyr::count(fecha) %>% 
+            dplyr::mutate(year = format(fecha, "%Y")) %>% 
+            group_by(year) %>% 
+            e_charts(fecha) %>%
+            e_calendar(range = "2020", top="150")%>%
+            e_heatmap(n, coord_system = "calendar") %>% 
+            e_visual_map(max = 390, min = 25, bottom = 100) %>% 
+            e_title("Calendario de delitos: Mes /Dia de la semana", "Numero de delitos ocurridos") %>% 
+            e_tooltip("item") 
+    ) 
+    
+    
+}
+
+#### appppp ####
+
+shinyApp(ui = ui, server = server)
+
+
+
